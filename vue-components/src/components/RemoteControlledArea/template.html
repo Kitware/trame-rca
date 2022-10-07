@@ -1,4 +1,6 @@
-<div>
-  <v-btn @click="triggerClick" :class="$style.btnClick">Custom click</v-btn>
-  <v-btn @click="triggerChange" :class="$style.btnChange">Custom change</v-btn>
+<div :class="$style.container">
+  <div :class="$style.inside">
+    <display-area :name="name" :origin="origin" />
+    <slot></slot>
+  </div>
 </div>

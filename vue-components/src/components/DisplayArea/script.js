@@ -1,5 +1,10 @@
+import ImageDisplayArea from '../ImageDisplayArea';
+
 export default {
-  name: 'RemoteControlledArea',
+  name: 'DisplayArea',
+  components: {
+    ImageDisplayArea,
+  },
   props: {
     name: {
       type: String,

@@ -17,10 +17,27 @@ class RemoteControlledArea(HtmlElement):
             **kwargs,
         )
         self._attr_names += [
-            "attribute_name",
-            ("py_attr_name", "js_attr_name"),
+            "name",
+            "origin",
         ]
-        self._event_names += [
-            "click",
-            "change",
+
+
+class DisplayArea(HtmlElement):
+    def __init__(self, **kwargs):
+        super().__init__(
+            "display-area",
+            **kwargs,
+        )
+        self._attr_names += [
+            "name",
+            "origin",
         ]
+
+
+class ImageDisplayArea(HtmlElement):
+    def __init__(self, **kwargs):
+        super().__init__(
+            "image-display-area",
+            **kwargs,
+        )
+        self._attr_names += ["name", "origin", ("pool_size", "poolSize")]
