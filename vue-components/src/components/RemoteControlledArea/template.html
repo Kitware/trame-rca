@@ -1,4 +1,7 @@
-<div :class="$style.container">
+<div
+  :class="$style.container"
+  @mousedown="onMouseDown"
+>
   <div :class="$style.inside">
     <display-area :name="name" :origin="origin" />
     <slot></slot>

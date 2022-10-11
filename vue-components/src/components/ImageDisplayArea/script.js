@@ -81,9 +81,6 @@ export default {
         .subscribe('trame.rca.topic.stream', this.onImage);
     }
   },
-  mounted() {
-    this.updateSize();
-  },
   beforeUnmount() {
     if (this.wslinkSubscription) {
       if (this.trame) {

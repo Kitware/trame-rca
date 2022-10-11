@@ -14,13 +14,8 @@ export default {
   },
   methods: {
     pushSize() {
-      console.log('push size');
       if (this.trame) {
         if (this.readySizeUpdate) {
-          console.log(
-            'this.currentSizeUpdateEvent',
-            this.currentSizeUpdateEvent
-          );
           this.readySizeUpdate = false;
           this.pendingSizeUpdatePromise = this.trame.client
             .getConnection()
@@ -36,8 +31,70 @@ export default {
         }
       }
     },
+    onMouseDown(e) {
+      this.dragging = true;
+      e.preventDefault();
+      this.sendEvent(this.toEvent('mouse-down', e));
+      document.addEventListener('mousemove', this.onMouseMove);
+      document.addEventListener('mouseup', this.onMouseUp);
+    },
+    toEvent(t, e) {
+      const { altKey, button, ctrlKey, shiftKey, x, y } = e;
+      const p = [x - this.currentOffset[0], y - this.currentOffset[1]];
+      return { t, p, b: button, alt: altKey, ctrl: ctrlKey, shift: shiftKey };
+    },
+    sendEvent(event) {
+      if (this.trame) {
+        if (this.readyMouseUpdate) {
+          this.readyMouseUpdate = false;
+          this.lastEvent = event;
+          this.pendingMouseUpdatePromise = this.trame.client
+            .getConnection()
+            .getSession()
+            .call('trame.rca.event', [this.name, this.origin, this.lastEvent]);
+          this.pendingSizeUpdatePromise.finally(this.finallyEventUpdate);
+        } else if (this.lastEvent.type !== event.type) {
+          this.pendingEventUpdateCount = 0;
+          this.trame.client
+            .getConnection()
+            .getSession()
+            .call('trame.rca.event', [this.name, this.origin, this.lastEvent]);
+          this.trame.client
+            .getConnection()
+            .getSession()
+            .call('trame.rca.event', [this.name, this.origin, event]);
+          this.lastEvent = event;
+        }
+      }
+    },
   },
   created() {
+    // Mouse management
+    this.dragging = false;
+    this.readyMouseUpdate = true;
+    this.lastEvent = null;
+    this.pendingMouseUpdatePromise = RESOLVED_PROMISED;
+    this.pendingMouseUpdateCount = 0;
+    this.onMouseMove = (e) => {
+      e.preventDefault();
+      this.sendEvent(this.toEvent('mouse-move', e));
+    };
+    this.onMouseUp = (e) => {
+      e.preventDefault();
+      this.dragging = false;
+      this.sendEvent(this.toEvent('mouse-up', e));
+      document.removeEventListener('mousemove', this.onMouseMove);
+      document.removeEventListener('mouseup', this.onMouseUp);
+    };
+
+    this.finallyEventUpdate = () => {
+      this.readyMouseUpdate = true;
+      if (this.pendingEventUpdateCount) {
+        this.pendingEventUpdateCount = 0;
+        this.sendEvent(this.lastEvent);
+      }
+    };
+
     // Size management
     this.currentSizeUpdateEvent = { w: 10, h: 10, p: window.devicePixelRatio };
     this.readySizeUpdate = true;
@@ -52,19 +109,19 @@ export default {
       }
     };
 
-    const updateSize = () => {
+    this.observer = new ResizeObserver(() => {
       if (!this.$el) {
         return;
       }
       const rect = this.$el.getBoundingClientRect();
+      const { top, left } = rect;
       this.currentSizeUpdateEvent.w = rect.width;
       this.currentSizeUpdateEvent.h = rect.height;
       this.currentSizeUpdateEvent.p = window.devicePixelRatio;
+      this.currentOffset = [left, top];
 
       this.pushSize();
-    };
-
-    this.observer = new ResizeObserver(updateSize);
+    });
   },
   mounted() {
     this.observer.observe(this.$el);
