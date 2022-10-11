@@ -1,5 +1,3 @@
-const RESOLVED_PROMISED = Promise.resolve(true);
-
 class ImageFrame {
   constructor(vueComponent) {
     this.vueComponent = vueComponent;
@@ -7,7 +5,7 @@ class ImageFrame {
     this.url = '';
     this.blob = null;
 
-    this.img.onload(() => {
+    this.img.addEventListener('load', () => {
       this.vueComponent.displayURL = this.url;
       this.vueComponent.hasContent = true;
     });
@@ -60,24 +58,6 @@ export default {
         this.frames.pop();
       }
     },
-    pushSize() {
-      if (this.trame) {
-        if (this.readySizeUpdate) {
-          this.readySizeUpdate = false;
-          this.pendingSizeUpdatePromise = this.trame.client
-            .getConnection()
-            .getSession()
-            .call('trame.rca.size', [
-              this.name,
-              this.origin,
-              this.currentSizeUpdateEvent,
-            ]);
-          this.pendingSizeUpdatePromise.finally(this.finallySizeUpdate);
-        } else {
-          this.pendingSizeUpdateCount++;
-        }
-      }
-    },
   },
   created() {
     // Image decoding
@@ -85,36 +65,10 @@ export default {
     this.nextFrameIndex = 0;
     this.updatePoolSize();
 
-    // Size management
-    this.currentSizeUpdateEvent = { w: 10, h: 10, p: window.devicePixelRatio };
-    this.readySizeUpdate = true;
-    this.pendingSizeUpdatePromise = RESOLVED_PROMISED;
-    this.pendingSizeUpdateCount = 0;
-
-    this.finallySizeUpdate = () => {
-      this.readySizeUpdate = true;
-      if (this.pendingSizeUpdateCount) {
-        this.pendingSizeUpdateCount = 0;
-        this.pushSize();
-      }
-    };
-
-    this.observer = new ResizeObserver(() => {
-      if (!this.$el) {
-        return;
-      }
-      const rect = this.$el.getBoundingClientRect();
-      this.currentSizeUpdateEvent.w = rect.width;
-      this.currentSizeUpdateEvent.h = rect.height;
-      this.currentSizeUpdateEvent.p = window.devicePixelRatio;
-
-      this.pushSize();
-    });
-
     // Display stream
     this.wslinkSubscription = null;
     this.onImage = ([{ name, meta, content }]) => {
-      if (this.name === name && meta.type.include('image')) {
+      if (this.name === name && meta.type.includes('image')) {
         this.nextFrameIndex = (this.nextFrameIndex + 1) % this.frames.length;
         const frame = this.frames[this.nextFrameIndex];
         frame.update(meta.type, content);
@@ -128,10 +82,9 @@ export default {
     }
   },
   mounted() {
-    this.observer.observe(this.$el);
+    this.updateSize();
   },
   beforeUnmount() {
-    this.observer.unobserve(this.$el);
     if (this.wslinkSubscription) {
       if (this.trame) {
         this.trame.client

@@ -18,7 +18,7 @@ vue_use = ["trame_rca"]
 
 
 def setup(server, **kwargs):
-    def configure_protocol(self, root_protocol):
+    def configure_protocol(root_protocol):
         protocol_instance = StreamManager()
         server.controller.rc_area_register = protocol_instance.register_area
         server.controller.rc_area_unregister = protocol_instance.unregister_area

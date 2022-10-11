@@ -20,7 +20,7 @@ class AreaAdapter:
     def push(self, content, meta=None):
         if meta is not None:
             self.last_meta = meta
-        self.stream_manager.push(self.area_name, self.last_meta, content)
+        self.streamer.push_content(self.area_name, self.last_meta, content)
 
     def on_interaction(self, origin, event):
         event_type = event.get("t", "mouse-down")
