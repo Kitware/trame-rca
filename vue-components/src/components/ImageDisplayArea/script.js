@@ -68,10 +68,14 @@ export default {
     // Display stream
     this.wslinkSubscription = null;
     this.onImage = ([{ name, meta, content }]) => {
-      if (this.name === name && meta.type.includes('image')) {
-        this.nextFrameIndex = (this.nextFrameIndex + 1) % this.frames.length;
-        const frame = this.frames[this.nextFrameIndex];
-        frame.update(meta.type, content);
+      if (this.name === name) {
+        if (meta.type === 'image/jpeg') {
+          this.nextFrameIndex = (this.nextFrameIndex + 1) % this.frames.length;
+          const frame = this.frames[this.nextFrameIndex];
+          frame.update(meta.type, content);
+        } else {
+          this.hasContent = false;
+        }
       }
     };
     if (this.trame) {

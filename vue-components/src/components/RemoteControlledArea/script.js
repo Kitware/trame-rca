@@ -13,18 +13,29 @@ export default {
     },
   },
   methods: {
-    pushSize() {
+    pushSize(addOn) {
       if (this.trame) {
         if (this.readySizeUpdate) {
           this.readySizeUpdate = false;
-          this.pendingSizeUpdatePromise = this.trame.client
-            .getConnection()
-            .getSession()
-            .call('trame.rca.size', [
-              this.name,
-              this.origin,
-              this.currentSizeUpdateEvent,
-            ]);
+          if (addOn) {
+            this.pendingSizeUpdatePromise = this.trame.client
+              .getConnection()
+              .getSession()
+              .call('trame.rca.size', [
+                this.name,
+                this.origin,
+                { ...this.currentSizeUpdateEvent, ...addOn },
+              ]);
+          } else {
+            this.pendingSizeUpdatePromise = this.trame.client
+              .getConnection()
+              .getSession()
+              .call('trame.rca.size', [
+                this.name,
+                this.origin,
+                this.currentSizeUpdateEvent,
+              ]);
+          }
           this.pendingSizeUpdatePromise.finally(this.finallySizeUpdate);
         } else {
           this.pendingSizeUpdateCount++;
@@ -130,4 +141,9 @@ export default {
     this.observer.unobserve(this.$el);
   },
   inject: ['trame'],
+  provide() {
+    return {
+      rcaPushSize: (addOn) => this.pushSize(addOn),
+    };
+  },
 };
