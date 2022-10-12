@@ -1,9 +1,11 @@
-import ImageDisplayArea from '../ImageDisplayArea';
+// import ImageDisplayArea from '../ImageDisplayArea';
+import VideoDisplayArea from '../VideoDisplayArea';
 
 export default {
   name: 'DisplayArea',
   components: {
-    ImageDisplayArea,
+    // ImageDisplayArea,
+    VideoDisplayArea,
   },
   props: {
     name: {
