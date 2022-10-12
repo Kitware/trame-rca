@@ -41,3 +41,12 @@ class ImageDisplayArea(HtmlElement):
             **kwargs,
         )
         self._attr_names += ["name", "origin", ("pool_size", "poolSize")]
+
+
+class VideoDisplayArea(HtmlElement):
+    def __init__(self, **kwargs):
+        super().__init__(
+            "video-display-area",
+            **kwargs,
+        )
+        self._attr_names += ["name", "origin",]
