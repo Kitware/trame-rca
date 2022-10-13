@@ -1,11 +1,13 @@
-import RemoteControlledArea from './RemoteControlledArea';
 import DisplayArea from './DisplayArea';
+import FpsDisplay from './FpsDisplay';
 import ImageDisplayArea from './ImageDisplayArea';
+import RemoteControlledArea from './RemoteControlledArea';
 import VideoDisplayArea from './VideoDisplayArea';
 
 export default {
-  RemoteControlledArea,
   DisplayArea,
+  FpsDisplay,
   ImageDisplayArea,
+  RemoteControlledArea,
   VideoDisplayArea,
 };

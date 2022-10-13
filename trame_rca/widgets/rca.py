@@ -34,6 +34,18 @@ class DisplayArea(HtmlElement):
         ]
 
 
+class FpsDisplay(HtmlElement):
+    def __init__(self, **kwargs):
+        super().__init__(
+            "fps-display",
+            **kwargs,
+        )
+        self._attr_names += [
+            "name",
+            ("fps_delta", "fpsDelta"),
+        ]
+
+
 class ImageDisplayArea(HtmlElement):
     def __init__(self, **kwargs):
         super().__init__(
