@@ -1,0 +1,11 @@
+# Changelog
+
+<!--next-version-placeholder-->
+
+## v0.1.0 (2022-10-13)
+### Feature
+* **VideoDisplayArea:** Add video based DisplayArea ([`71d6e46`](https://github.com/Kitware/trame-rca/commit/71d6e46e2663d086e8ef2a011ac71a948144ee67))
+
+### Fix
+* **rca-widget:** Start handling mouse interaction ([`dd42f82`](https://github.com/Kitware/trame-rca/commit/dd42f82ebb3e796397b55246c8fed0f62fa366a7))
+* **vue:** Size handling done at RCA rather than display ([`b47a944`](https://github.com/Kitware/trame-rca/commit/b47a94472d09a875f9e9c4d8b38f60c47138f538))
