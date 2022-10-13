@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.1.1 (2022-10-13)
+### Fix
+* **VideoDisplayArea:** Parse initialization segment ([`6dd4960`](https://github.com/Kitware/trame-rca/commit/6dd4960bbe75b59c763f597e4fab551bdcdc3661))
+
 ## v0.1.0 (2022-10-13)
 ### Feature
 * **VideoDisplayArea:** Add video based DisplayArea ([`71d6e46`](https://github.com/Kitware/trame-rca/commit/71d6e46e2663d086e8ef2a011ac71a948144ee67))
