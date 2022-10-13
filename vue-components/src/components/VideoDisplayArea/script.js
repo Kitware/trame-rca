@@ -4,60 +4,57 @@ class VideoDecoder {
     this.mime = mime;
     this.sourceBuffer = null;
     this.mediaSource = null;
-    this.queue = [];
+    this.initSegment = null;
+    this.mediaSegments = [];
     this.loaded = 0;
-    // redefine push such that it appends only when it is safe to do so.
-    // if it is not safe to append the source buffer, push the buffer into queue.
-    this.queue.push = (chunk) => {
-      if (
-        this.mediaSource.readyState === 'open' &&
-        this.sourceBuffer &&
-        this.sourceBuffer.updating === false
-      ) {
-        this.sourceBuffer.appendBuffer(chunk);
-        this.loaded += 1;
-      } else {
-        Array.prototype.push.call(this, chunk);
-      }
-    };
     if ('MediaSource' in window) {
       this.mediaSource = new MediaSource();
       this.videoElement.src = URL.createObjectURL(this.mediaSource);
+      // sourceopen -> append initSegemnt -> listen to updateend of source buffer.
       this.mediaSource.addEventListener('sourceopen', () => {
-        URL.revokeObjectURL(this.videoElement.src);
-        console.log(`media-source readyState=${this.mediaSource.readyState}`);
-        this.initBuffer();
+        if (MediaSource.isTypeSupported(this.mime)) {
+          this.initSourceBuffer();
+        } else {
+          console.error(`Unsupported MIME type or codec: ${this.mime}`);
+        }
       });
     } else {
       console.error('The Media Source Extensions API is not supported.');
     }
   }
 
-  initBuffer() {
-    if (MediaSource.isTypeSupported(this.mime)) {
-      console.log(`addSourceBuffer: ${this.mime}`);
-      this.sourceBuffer = this.mediaSource.addSourceBuffer(this.mime);
-      this.sourceBuffer.mode = 'sequence';
+  initSourceBuffer() {
+    this.sourceBuffer = this.mediaSource.addSourceBuffer(this.mime);
+    if (this.initSegment) {
+      this.sourceBuffer.appendBuffer(this.initSegment);
     } else {
-      console.error(`Unsupported MIME type or codec: ${this.mime}`);
+      console.error('Need initialization segment');
     }
+    this.sourceBuffer.onupdateend = () => {
+      if (!this.mediaSegments.length) {
+        return;
+      } else {
+        this.sourceBuffer.appendBuffer(this.mediaSegments.shift());
+        this.loaded += 1;
+      }
+    };
   }
 
-  reset() {
-    if (this.videoElement.src) {
-      URL.revokeObjectURL(this.videoElement.src);
+  queueChunk(data) {
+    if (
+      this.mediaSource.readyState === 'open' &&
+      this.sourceBuffer &&
+      this.sourceBuffer.updating === false
+    ) {
+      this.sourceBuffer.appendBuffer(data);
+      this.loaded += 1;
+    } else {
+      this.mediaSegments.push(data);
     }
-    this.sourceBuffer = null;
-    this.mediaSource = null;
-    this.queue.length = 0;
-  }
-
-  queueChunk(content) {
-    console.log(`q-add length=${this.queue.length}`);
-    this.queue.push(content);
   }
 
   exit() {
+    this.sourceBuffer.abort();
     URL.revokeObjectURL(this.videoElement.src);
   }
 }
@@ -82,41 +79,40 @@ export default {
     };
   },
   methods: {
-    requestKeyframeHeader() {
-      console.log('requestKeyframeHeader');
+    requestInitializationSegment() {
       if (this.rcaPushSize) {
-        console.log('push size with video header');
         this.rcaPushSize({ videoHeader: 1 });
       }
     },
   },
   created() {
-    console.log('created video vue component');
     this.pushChunk = (bytes, mime) => {
-      console.log(
-        `pushChunk l=${this.loaded} r=${this.received} d=${this.received -
-          this.loaded}`
-      );
-      if (this.decoder.mime !== mime) {
-        this.decoder.reset();
-        this.decoder = new VideoDecoder(this.$el, mime);
-        this.requestKeyframeHeader();
+      const fourcc = Array.from(new Uint8Array(bytes).slice(0, 4))
+        .map((byte) => byte.toString(16))
+        .join('');
+      if (fourcc == '1a45dfa3' && mime.includes('webm')) {
+        console.log('detected ebml fourcc');
+        if (this.decoder) {
+          this.decoder.exit();
+        }
+        // create a video decoder with that video tag
+        this.decoder = new VideoDecoder(this.$el);
+        this.decoder.initSegment = new Uint8Array(bytes);
+      } else if (this.decoder.mime !== mime) {
+        console.log('detected mime change');
+        this.requestInitializationSegment();
+      } else {
+        this.decoder.queueChunk(bytes);
+        this.loaded = this.decoder.loaded;
+        this.hasContent = true;
       }
-      this.decoder.queueChunk(bytes);
-      this.loaded = this.decoder.loaded;
-      this.hasContent = true;
     };
   },
   mounted() {
-    console.log('mounted video vue component');
-    // create a video decoder with that video tag
-    this.decoder = new VideoDecoder(this.$el);
-
     this.onChunkAvailable = ([{ name, meta, content }]) => {
       // TODO: get mime type from meta and handle that mimetype
       if (this.name === name && meta.type.includes('video/')) {
         this.received += 1;
-        console.log(`onChunkAvailable type=${meta.type}`);
         content.arrayBuffer().then((v) => this.pushChunk(v, meta.type));
       }
     };
@@ -125,8 +121,7 @@ export default {
         .getConnection()
         .getSession()
         .subscribe('trame.rca.topic.stream', this.onChunkAvailable);
-
-      this.requestKeyframeHeader();
+      this.requestInitializationSegment();
     }
   },
   beforeUnmount() {
