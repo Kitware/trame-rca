@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.1.2 (2022-10-13)
+### Fix
+* **FpsDisplay:** Add fps feedback ([`2ddea8d`](https://github.com/Kitware/trame-rca/commit/2ddea8dbca6da7f531a795c0e77a8470d9be4cd4))
+
 ## v0.1.1 (2022-10-13)
 ### Fix
 * **VideoDisplayArea:** Parse initialization segment ([`6dd4960`](https://github.com/Kitware/trame-rca/commit/6dd4960bbe75b59c763f597e4fab551bdcdc3661))
