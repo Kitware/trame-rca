@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.1.3 (2022-10-14)
+### Fix
+* **stats:** Improve stats ([`396a74f`](https://github.com/Kitware/trame-rca/commit/396a74fe5dae764a4e1e3b8c8e9e0f90d3289122))
+
 ## v0.1.2 (2022-10-13)
 ### Fix
 * **FpsDisplay:** Add fps feedback ([`2ddea8d`](https://github.com/Kitware/trame-rca/commit/2ddea8dbca6da7f531a795c0e77a8470d9be4cd4))
