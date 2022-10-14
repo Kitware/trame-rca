@@ -1,0 +1,66 @@
+<div id="rendererArea" v-show="hasContent">
+  <script id="videoWorker" type="javascript/worker">
+    self.decoder = null;
+    onmessage = async function(e) {
+      console.log('got message');
+      if (e.data.init == true) {
+        let canvas = e.data.canvas;
+        console.log(`decoder init`);
+        self.decoder = startDecodingAndRendering(canvas);
+      } else if (e.data.reconfigure === true) {
+        let config = e.data.config;
+        console.log(`decoder reconfigure - ${config.codec}|${config.codedWidth}|${config.codedHeight}`);
+        console.log(config);
+        self.decoder.configure(config);
+      } else if (e.data.process_chunk === true) {
+        let chunk = new EncodedVideoChunk({
+          timestamp: e.data.timestamp,
+          type: e.data.type,
+          data: e.data.data,
+        });
+        self.decoder.decode(chunk);
+      } else if (e.data.flush === true) {
+        console.log(`decoder flush`);
+        self.decoder.flush();
+      } else if (e.data.reset === true) {
+        console.log(`decoder reset`);
+        self.decoder.reset();
+      } else if (e.data.close_decoder === true) {
+        console.log(`decoder close`);
+        self.decoder.close();
+      }
+    };
+    function reportError(e) {
+      console.log(e.message);
+      postMessage(e.message);
+    }
+    function startDecodingAndRendering(canvas) {
+      let ctx = canvas.getContext('2d');
+      let ready_frames = [];
+      let underflow = true;
+      async function renderFrame() {
+        if (ready_frames.length === 0) {
+          underflow = true;
+          return;
+        }
+        let frame = ready_frames.shift();
+        underflow = false;
+        ctx.drawImage(frame, 0, 0);
+        frame.close();
+        setTimeout(renderFrame, 0);
+      }
+      function handleFrame(frame) {
+        ready_frames.push(frame);
+        if (underflow) {
+          underflow = false;
+          setTimeout(renderFrame, 0);
+        }
+      }
+      const init = {
+        output: handleFrame,
+        error: reportError,
+      };
+      return new VideoDecoder(init);
+    }
+</script>
+</div>
