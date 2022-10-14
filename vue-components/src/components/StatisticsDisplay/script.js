@@ -1,3 +1,5 @@
+const UNITS = ['B/s', 'KB/s', 'MB/s'];
+
 class FPSMonitor {
   constructor(
     windowSize = 255,
@@ -10,6 +12,7 @@ class FPSMonitor {
     this.lastTS = 0;
     this.serverTime = [];
     this.clientTimes = [];
+    this.packetSizes = [];
     this.statWindow = [];
   }
 
@@ -17,6 +20,7 @@ class FPSMonitor {
     while (this.serverTime.length > this.windowSize) {
       this.serverTime.shift();
       this.clientTimes.shift();
+      this.packetSizes.shift();
     }
     while (this.statWindow.length > this.windowStatSize) {
       this.statWindow.shift();
@@ -36,9 +40,11 @@ class FPSMonitor {
     const minMax = [0, 0];
     let clientTime = this.clientTimes[0];
     let serverTime = this.serverTime[0];
+    let totalSize = 0;
     for (let i = 0; i < this.clientTimes.length; i++) {
       const ct = this.clientTimes[i] - clientTime;
       const st = this.serverTime[i] - serverTime;
+      totalSize += this.packetSizes[i];
       client.push(ct);
       server.push(st);
       clientTime += dt;
@@ -55,16 +61,20 @@ class FPSMonitor {
       }
     }
 
+    totalSize *= avgFps / this.packetSizes.length;
+
     return {
       avgFps,
       client,
       server,
       minMax,
+      totalSize,
     };
   }
 
-  addEntry(timeInMs) {
+  addEntry(timeInMs, size) {
     const ts = Date.now();
+    this.packetSizes.push(size);
     this.serverTime.push(timeInMs);
     this.clientTimes.push(ts);
     if (ts - this.lastTS < this.newInteractionThreshold) {
@@ -79,7 +89,7 @@ class FPSMonitor {
 }
 
 export default {
-  name: 'FpsDisplay',
+  name: 'StatisticsDisplay',
   props: {
     name: {
       type: String,
@@ -89,6 +99,18 @@ export default {
       type: Number,
       default: 4,
     },
+    statWindowSize: {
+      type: Number,
+      default: 10,
+    },
+    historyWindowSize: {
+      type: Number,
+      default: 255,
+    },
+    resetMsThreshold: {
+      type: Number,
+      default: 255,
+    },
   },
   data() {
     return {
@@ -96,9 +118,30 @@ export default {
       ch: 200,
       avg: 30,
       delta: 2,
+      totalSize: 0,
     };
   },
+  watch: {
+    statWindowSize(v) {
+      this.monitor.windowStatSize = v;
+    },
+    historyWindowSize(v) {
+      this.monitor.windowSize = v;
+    },
+    resetMsThreshold(v) {
+      this.monitor.newInteractionThreshold = v;
+    },
+  },
   methods: {
+    sizeUnit(v) {
+      let value = v;
+      for (let i = 0; i < 3; i++) {
+        if (value < 1000) {
+          return `${value.toFixed(1)} ${UNITS[i]}`;
+        }
+        value /= 1000;
+      }
+    },
     draw(client, server, clientColor = '#1DE9B688', serverColor = '#EF9A9A') {
       if (!this.$el) {
         return;
@@ -153,15 +196,16 @@ export default {
     },
   },
   created() {
-    this.monitor = new FPSMonitor();
+    this.monitor = new FPSMonitor(this.historyWindowSize, this.statWindowSize);
 
     // Display stream
     this.wslinkSubscription = null;
-    this.onStreamPacket = ([{ name, meta }]) => {
+    this.onStreamPacket = ([{ name, meta, content }]) => {
       if (this.name === name) {
-        const stats = this.monitor.addEntry(meta.st);
+        const stats = this.monitor.addEntry(meta.st, content.size);
         if (stats) {
           this.avg = stats.avgFps;
+          this.totalSize = stats.totalSize;
           this.delta = 1000 / (stats.minMax[1] - stats.minMax[0]);
           this.draw(stats.client, stats.server);
         }

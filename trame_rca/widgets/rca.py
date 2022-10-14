@@ -34,15 +34,18 @@ class DisplayArea(HtmlElement):
         ]
 
 
-class FpsDisplay(HtmlElement):
+class StatisticsDisplay(HtmlElement):
     def __init__(self, **kwargs):
         super().__init__(
-            "fps-display",
+            "statistics-display",
             **kwargs,
         )
         self._attr_names += [
             "name",
             ("fps_delta", "fpsDelta"),
+            ("stat_window_size", "statWindowSize"),
+            ("history_window_size", "historyWindowSize"),
+            ("reset_ms_threshold", "resetMsThreshold"),
         ]
 
 

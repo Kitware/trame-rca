@@ -6,12 +6,11 @@
       {{ avg.toFixed(1) }} fps
     </div>
     <v-spacer />
-    <v-icon>mdi-timeline-clock-outline</v-icon>
+    <v-icon>mdi-database-import</v-icon>
     <v-spacer />
     <div>
-      {{ delta.toFixed(2) }} fps
+      {{ sizeUnit(totalSize) }}
     </div>
-    <v-spacer />
   </v-row>
   <canvas style="position: absolute; left: 0; top: 0;" class="js-canvas" :width="cw" :height="ch">
   </canvas>

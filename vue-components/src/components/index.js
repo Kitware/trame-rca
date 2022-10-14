@@ -1,12 +1,12 @@
 import DisplayArea from './DisplayArea';
-import FpsDisplay from './FpsDisplay';
+import StatisticsDisplay from './StatisticsDisplay';
 import ImageDisplayArea from './ImageDisplayArea';
 import RemoteControlledArea from './RemoteControlledArea';
 import VideoDisplayArea from './VideoDisplayArea';
 
 export default {
   DisplayArea,
-  FpsDisplay,
+  StatisticsDisplay,
   ImageDisplayArea,
   RemoteControlledArea,
   VideoDisplayArea,
