@@ -25,6 +25,7 @@ class VideoDecoder {
 
   initSourceBuffer() {
     this.sourceBuffer = this.mediaSource.addSourceBuffer(this.mime);
+    this.sourceBuffer.mode = 'sequence';
     if (this.initSegment) {
       this.sourceBuffer.appendBuffer(this.initSegment);
     } else {
@@ -33,7 +34,7 @@ class VideoDecoder {
     this.sourceBuffer.onupdateend = () => {
       if (!this.mediaSegments.length) {
         return;
-      } else {
+      } else if (this.sourceBuffer.updating === false) {
         this.sourceBuffer.appendBuffer(this.mediaSegments.shift());
         this.loaded += 1;
       }
@@ -55,6 +56,8 @@ class VideoDecoder {
 
   exit() {
     this.sourceBuffer.abort();
+    this.mediaSource.endOfStream();
+    this.videoElement.play();
     URL.revokeObjectURL(this.videoElement.src);
   }
 }
