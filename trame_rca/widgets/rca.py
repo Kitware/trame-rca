@@ -65,3 +65,15 @@ class VideoDisplayArea(HtmlElement):
             "name",
             "origin",
         ]
+
+
+class VideoDisplayArea2(HtmlElement):
+    def __init__(self, **kwargs):
+        super().__init__(
+            "video-display-area2",
+            **kwargs,
+        )
+        self._attr_names += [
+            "name",
+            "origin",
+        ]

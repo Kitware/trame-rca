@@ -111,9 +111,14 @@ export default {
   mounted() {
     this.onChunkAvailable = ([{ name, meta, content }]) => {
       // TODO: get mime type from meta and handle that mimetype
-      if (this.name === name && meta.type.includes('video/')) {
+      if (meta.type.includes('video/') == false) {
+        this.hasContent = false;
+        return;
+      }
+      if (this.name === name) {
         this.received += 1;
         content.arrayBuffer().then((v) => this.pushChunk(v, meta.type));
+        this.hasContent = false;
       }
     };
     if (this.trame) {
