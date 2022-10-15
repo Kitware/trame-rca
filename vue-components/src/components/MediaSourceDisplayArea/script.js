@@ -63,7 +63,7 @@ class VideoDecoder {
 }
 
 export default {
-  name: 'VideoDisplayArea',
+  name: 'MediaSourceDisplayArea',
   props: {
     name: {
       type: String,
@@ -113,15 +113,14 @@ export default {
   },
   mounted() {
     this.onChunkAvailable = ([{ name, meta, content }]) => {
-      // TODO: get mime type from meta and handle that mimetype
-      if (meta.type.includes('video/') == false) {
+      if (!meta.type.includes('video/')) {
         this.hasContent = false;
         return;
       }
       if (this.name === name) {
         this.received += 1;
         content.arrayBuffer().then((v) => this.pushChunk(v, meta.type));
-        this.hasContent = false;
+        this.hasContent = true;
       }
     };
     if (this.trame) {

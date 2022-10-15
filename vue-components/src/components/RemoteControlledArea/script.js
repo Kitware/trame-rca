@@ -11,6 +11,10 @@ export default {
       type: String,
       default: 'anonymous',
     },
+    display: {
+      type: String,
+      default: 'image',
+    },
   },
   methods: {
     pushSize(addOn) {

@@ -2,14 +2,14 @@ import DisplayArea from './DisplayArea';
 import StatisticsDisplay from './StatisticsDisplay';
 import ImageDisplayArea from './ImageDisplayArea';
 import RemoteControlledArea from './RemoteControlledArea';
-import VideoDisplayArea from './VideoDisplayArea';
-import VideoDisplayArea2 from './VideoDisplayArea2';
+import MediaSourceDisplayArea from './MediaSourceDisplayArea';
+import VideoDecoderDisplayArea from './VideoDecoderDisplayArea';
 
 export default {
   DisplayArea,
   StatisticsDisplay,
   ImageDisplayArea,
   RemoteControlledArea,
-  VideoDisplayArea,
-  VideoDisplayArea2,
+  MediaSourceDisplayArea,
+  VideoDecoderDisplayArea,
 };

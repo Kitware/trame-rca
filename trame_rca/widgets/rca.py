@@ -19,6 +19,7 @@ class RemoteControlledArea(HtmlElement):
         self._attr_names += [
             "name",
             "origin",
+            "display",
         ]
 
 
@@ -31,6 +32,7 @@ class DisplayArea(HtmlElement):
         self._attr_names += [
             "name",
             "origin",
+            "display",
         ]
 
 
@@ -58,10 +60,10 @@ class ImageDisplayArea(HtmlElement):
         self._attr_names += ["name", "origin", ("pool_size", "poolSize")]
 
 
-class VideoDisplayArea(HtmlElement):
+class MediaSourceDisplayArea(HtmlElement):
     def __init__(self, **kwargs):
         super().__init__(
-            "video-display-area",
+            "media-source-display-area",
             **kwargs,
         )
         self._attr_names += [
@@ -70,10 +72,10 @@ class VideoDisplayArea(HtmlElement):
         ]
 
 
-class VideoDisplayArea2(HtmlElement):
+class VideoDecoderDisplayArea(HtmlElement):
     def __init__(self, **kwargs):
         super().__init__(
-            "video-display-area2",
+            "video-decoder-display-area",
             **kwargs,
         )
         self._attr_names += [
