@@ -1,11 +1,13 @@
 import ImageDisplayArea from '../ImageDisplayArea';
-import VideoDisplayArea from '../VideoDisplayArea';
+import MediaSourceDisplayArea from '../MediaSourceDisplayArea';
+import VideoDecoderDisplayArea from '../VideoDecoderDisplayArea';
 
 export default {
   name: 'DisplayArea',
   components: {
     ImageDisplayArea,
-    VideoDisplayArea,
+    MediaSourceDisplayArea,
+    VideoDecoderDisplayArea,
   },
   props: {
     name: {
@@ -15,6 +17,10 @@ export default {
     origin: {
       type: String,
       default: 'anonymous',
+    },
+    display: {
+      type: String,
+      default: 'image',
     },
   },
 };

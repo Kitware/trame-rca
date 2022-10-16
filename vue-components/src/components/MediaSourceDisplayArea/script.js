@@ -25,6 +25,7 @@ class VideoDecoder {
 
   initSourceBuffer() {
     this.sourceBuffer = this.mediaSource.addSourceBuffer(this.mime);
+    this.sourceBuffer.mode = 'sequence';
     if (this.initSegment) {
       this.sourceBuffer.appendBuffer(this.initSegment);
     } else {
@@ -33,7 +34,7 @@ class VideoDecoder {
     this.sourceBuffer.onupdateend = () => {
       if (!this.mediaSegments.length) {
         return;
-      } else {
+      } else if (this.sourceBuffer.updating === false) {
         this.sourceBuffer.appendBuffer(this.mediaSegments.shift());
         this.loaded += 1;
       }
@@ -55,12 +56,14 @@ class VideoDecoder {
 
   exit() {
     this.sourceBuffer.abort();
+    this.mediaSource.endOfStream();
+    this.videoElement.play();
     URL.revokeObjectURL(this.videoElement.src);
   }
 }
 
 export default {
-  name: 'VideoDisplayArea',
+  name: 'MediaSourceDisplayArea',
   props: {
     name: {
       type: String,
@@ -110,10 +113,14 @@ export default {
   },
   mounted() {
     this.onChunkAvailable = ([{ name, meta, content }]) => {
-      // TODO: get mime type from meta and handle that mimetype
-      if (this.name === name && meta.type.includes('video/')) {
+      if (!meta.type.includes('video/')) {
+        this.hasContent = false;
+        return;
+      }
+      if (this.name === name) {
         this.received += 1;
         content.arrayBuffer().then((v) => this.pushChunk(v, meta.type));
+        this.hasContent = true;
       }
     };
     if (this.trame) {

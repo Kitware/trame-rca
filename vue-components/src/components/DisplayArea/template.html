@@ -1,4 +1,6 @@
 <div style="width: 100%; height: 100%;">
-  <image-display-area :name="name" :origin="origin" :poolSize="4" />
-  <video-display-area :name="name" :origin="origin" />
+  <image-display-area v-if="display === 'image'" :name="name" :origin="origin" :poolSize="4" />
+  <media-source-display-area v-if="display === 'media-source'" :name="name" :origin="origin" />
+  <video-decoder-display-area v-if="display === 'video-decoder'" :name="name" :origin="origin" />
 </div>
+`
