@@ -2,6 +2,14 @@
 
 <!--next-version-placeholder-->
 
+## v0.2.0 (2022-10-16)
+### Feature
+* **VideoDisplayArea2:** Decode native vp9 bitstreams ([`43f4167`](https://github.com/Kitware/trame-rca/commit/43f41679c4c8ba6107ca4de6e568bd332cf5539d))
+
+### Fix
+* **VideoDecoder:** Code cleanup ([`32724b1`](https://github.com/Kitware/trame-rca/commit/32724b161262cbd6759c9293271afb7ef350bb07))
+* **VideoDisplay:** Set source buffer in sequence mode ([`873ddc0`](https://github.com/Kitware/trame-rca/commit/873ddc0168a868f5a9f2c995c707f268df7a8f00))
+
 ## v0.1.3 (2022-10-14)
 ### Fix
 * **stats:** Improve stats ([`396a74f`](https://github.com/Kitware/trame-rca/commit/396a74fe5dae764a4e1e3b8c8e9e0f90d3289122))
