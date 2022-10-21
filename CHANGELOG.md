@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.2.1 (2022-10-21)
+### Fix
+* **stats:** Allow stats to work on other pub/sub ([`b182e36`](https://github.com/Kitware/trame-rca/commit/b182e366cb5c2ffe718bced0d41e482f07c07b95))
+
 ## v0.2.0 (2022-10-16)
 ### Feature
 * **VideoDisplayArea2:** Decode native vp9 bitstreams ([`43f4167`](https://github.com/Kitware/trame-rca/commit/43f41679c4c8ba6107ca4de6e568bd332cf5539d))
