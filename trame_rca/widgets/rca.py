@@ -48,6 +48,8 @@ class StatisticsDisplay(HtmlElement):
             ("stat_window_size", "statWindowSize"),
             ("history_window_size", "historyWindowSize"),
             ("reset_ms_threshold", "resetMsThreshold"),
+            ("ws_topic", "wsLinkTopic"),
+            ("packet_decorator", "packetDecorator"),
         ]
 
 

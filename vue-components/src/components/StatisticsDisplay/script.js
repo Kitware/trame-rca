@@ -111,6 +111,18 @@ export default {
       type: Number,
       default: 255,
     },
+    wsLinkTopic: {
+      type: String,
+      default: 'trame.rca.topic.stream',
+    },
+    packetDecorator: {
+      type: Function,
+      default: ({ name, meta, content }) => ({
+        name,
+        serverTime: meta.st,
+        contentSize: content.size,
+      }),
+    },
   },
   data() {
     return {
@@ -200,9 +212,10 @@ export default {
 
     // Display stream
     this.wslinkSubscription = null;
-    this.onStreamPacket = ([{ name, meta, content }]) => {
+    this.onStreamPacket = ([v]) => {
+      const { name, serverTime, contentSize } = this.packetDecorator(v);
       if (this.name === name) {
-        const stats = this.monitor.addEntry(meta.st, content.size);
+        const stats = this.monitor.addEntry(serverTime, contentSize);
         if (stats) {
           this.avg = stats.avgFps;
           this.totalSize = stats.totalSize;
@@ -215,7 +228,7 @@ export default {
       this.wslinkSubscription = this.trame.client
         .getConnection()
         .getSession()
-        .subscribe('trame.rca.topic.stream', this.onStreamPacket);
+        .subscribe(this.wsLinkTopic, this.onStreamPacket);
     }
 
     // Size management
