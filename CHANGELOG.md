@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.3.0 (2022-10-27)
+### Feature
+* **RawImageDisplayArea:** Support rgb24 and rgba32 images ([`b77143a`](https://github.com/Kitware/trame-rca/commit/b77143a292e55148d060cae958053b1696fa1c08))
+
 ## v0.2.1 (2022-10-21)
 ### Fix
 * **stats:** Allow stats to work on other pub/sub ([`b182e36`](https://github.com/Kitware/trame-rca/commit/b182e366cb5c2ffe718bced0d41e482f07c07b95))
