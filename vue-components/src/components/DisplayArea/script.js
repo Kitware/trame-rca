@@ -1,6 +1,7 @@
 import ImageDisplayArea from '../ImageDisplayArea';
 import MediaSourceDisplayArea from '../MediaSourceDisplayArea';
 import VideoDecoderDisplayArea from '../VideoDecoderDisplayArea';
+import RawImageDisplayArea from '../RawImageDisplayArea';
 
 export default {
   name: 'DisplayArea',
@@ -8,6 +9,7 @@ export default {
     ImageDisplayArea,
     MediaSourceDisplayArea,
     VideoDecoderDisplayArea,
+    RawImageDisplayArea,
   },
   props: {
     name: {

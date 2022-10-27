@@ -82,3 +82,15 @@ class VideoDecoderDisplayArea(HtmlElement):
             "name",
             "origin",
         ]
+
+
+class RawImageDisplayArea(HtmlElement):
+    def __init__(self, **kwargs):
+        super().__init__(
+            "raw-image-display-area",
+            **kwargs,
+        )
+        self._attr_names += [
+            "name",
+            "origin",
+        ]
