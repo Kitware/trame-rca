@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.3.1 (2023-04-25)
+### Fix
+* **api:** Expose only meaningful classes ([`3ccff7c`](https://github.com/Kitware/trame-rca/commit/3ccff7c53680a29f1249372d5b3d2f146e9e1af5))
+
 ## v0.3.0 (2022-10-27)
 ### Feature
 * **RawImageDisplayArea:** Support rgb24 and rgba32 images ([`b77143a`](https://github.com/Kitware/trame-rca/commit/b77143a292e55148d060cae958053b1696fa1c08))
