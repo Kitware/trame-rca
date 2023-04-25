@@ -1,5 +1,17 @@
+"""RCA Widgets only support vue2 for now.
+"""
 from trame_client.widgets.core import AbstractElement
 from .. import module
+
+__all__ = [
+    "RemoteControlledArea",
+    "DisplayArea",
+    "StatisticsDisplay",
+    "ImageDisplayArea",
+    "MediaSourceDisplayArea",
+    "VideoDecoderDisplayArea",
+    "RawImageDisplayArea",
+]
 
 
 class HtmlElement(AbstractElement):
