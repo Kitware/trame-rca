@@ -20,7 +20,6 @@ class ImageFrame {
 }
 
 export default {
-  name: 'ImageDisplayArea',
   props: {
     name: {
       type: String,
@@ -97,4 +96,5 @@ export default {
     }
   },
   inject: ['trame'],
+  template: `<img :src="displayURL" v-show="hasContent" />`,
 };

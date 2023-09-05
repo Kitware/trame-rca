@@ -89,7 +89,6 @@ class FPSMonitor {
 }
 
 export default {
-  name: 'StatisticsDisplay',
   props: {
     name: {
       type: String,
@@ -257,4 +256,23 @@ export default {
     }
   },
   inject: ['trame'],
+  template: `
+    <v-col style="width: 100%; height: 100%; position: relative;">
+      <v-row class="text-subtitle-2" style="position: absolute; top: 0; left: 0; width: 100%; z-index: 1;">
+        <v-icon>mdi-gauge</v-icon>
+        <v-spacer />
+        <div>
+          {{ avg.toFixed(1) }} fps
+        </div>
+        <v-spacer />
+        <v-icon>mdi-database-import</v-icon>
+        <v-spacer />
+        <div>
+          {{ sizeUnit(totalSize) }}
+        </div>
+      </v-row>
+      <canvas style="position: absolute; left: 0; top: 0;" class="js-canvas" :width="cw" :height="ch">
+      </canvas>
+    </v-col>
+  `,
 };

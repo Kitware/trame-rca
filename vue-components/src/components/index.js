@@ -1,10 +1,10 @@
-import DisplayArea from './DisplayArea';
-import StatisticsDisplay from './StatisticsDisplay';
-import ImageDisplayArea from './ImageDisplayArea';
-import RemoteControlledArea from './RemoteControlledArea';
-import MediaSourceDisplayArea from './MediaSourceDisplayArea';
-import VideoDecoderDisplayArea from './VideoDecoderDisplayArea';
-import RawImageDisplayArea from './RawImageDisplayArea';
+import DisplayArea from './DisplayArea.js';
+import StatisticsDisplay from './StatisticsDisplay.js';
+import ImageDisplayArea from './ImageDisplayArea.js';
+import RemoteControlledArea from './RemoteControlledArea.js';
+import MediaSourceDisplayArea from './MediaSourceDisplayArea.js';
+import VideoDecoderDisplayArea from './VideoDecoderDisplayArea.js';
+import RawImageDisplayArea from './RawImageDisplayArea.js';
 
 export default {
   DisplayArea,

@@ -1,7 +1,6 @@
 const RESOLVED_PROMISED = Promise.resolve(true);
 
 export default {
-  name: 'RemoteControlledArea',
   props: {
     name: {
       type: String,
@@ -150,4 +149,12 @@ export default {
       rcaPushSize: (addOn) => this.pushSize(addOn),
     };
   },
+  template: `
+    <div style="margin: 0; padding: 0; position: relative; width: 100%; height: 100%;" @mousedown="onMouseDown">
+      <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;">
+        <display-area :display="display" :name="name" :origin="origin" />
+        <slot></slot>
+      </div>
+    </div>
+  `,
 };
