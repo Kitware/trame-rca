@@ -1,4 +1,4 @@
-import { DecoderWorker } from './decoder.js';
+import { DecoderWorker } from '../utils/decoder';
 
 export default {
   props: {
