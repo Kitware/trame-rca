@@ -90,6 +90,13 @@ export default {
         )
       );
     });
+    // Interaction Events
+    interactorStyle.onStartInteractionEvent((e) => {
+      sendEvent(e);
+    });
+    interactorStyle.onEndInteractionEvent((e) => {
+      sendEvent(e);
+    });
 
     // -----------------------------------------------------------------------
 
