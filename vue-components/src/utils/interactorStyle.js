@@ -96,12 +96,34 @@ function vtkInteractorStyleRemoteMouse(publicAPI, model) {
   publicAPI.onButtonDown = (button, callData) => {
     // model._interactor.requestAnimation(publicAPI.onButtonDown);
     publicAPI.invokeStartInteractionEvent(START_INTERACTION_EVENT);
-    publicAPI.invokeRemoteMouseEvent(createRemoteEvent(callData));
+    let eventType = '';
+    if (button == 1) {
+      eventType = 'LeftButtonPress';
+    } else if (button == 2) {
+      eventType = 'MiddleButtonPress';
+    } else if (button == 3) {
+      eventType = 'RightButtonPress';
+    }
+    publicAPI.invokeRemoteMouseEvent({
+      type: eventType,
+      ...createRemoteEvent(callData),
+    });
   };
 
   //-------------------------------------------------------------------------
   publicAPI.onButtonUp = (button, callData) => {
-    publicAPI.invokeRemoteMouseEvent(createRemoteEvent(callData));
+    let eventType = '';
+    if (button == 1) {
+      eventType = 'LeftButtonRelease';
+    } else if (button == 2) {
+      eventType = 'MiddleButtonRelease';
+    } else if (button == 3) {
+      eventType = 'RightButtonRelease';
+    }
+    publicAPI.invokeRemoteMouseEvent({
+      type: eventType,
+      ...createRemoteEvent(callData),
+    });
     publicAPI.invokeEndInteractionEvent(END_INTERACTION_EVENT);
     // model._interactor.cancelAnimation(publicAPI.onButtonDown);
   };
@@ -160,7 +182,10 @@ function vtkInteractorStyleRemoteMouse(publicAPI, model) {
         model.buttonRight)
     ) {
       model.lastThrottleTime = ts;
-      publicAPI.invokeRemoteMouseEvent(createRemoteEvent(callData));
+      publicAPI.invokeRemoteMouseEvent({
+        type: 'MouseMove',
+        ...createRemoteEvent(callData),
+      });
     }
     publicAPI.invokeInteractionEvent(INTERACTION_EVENT);
   };
