@@ -1,5 +1,4 @@
 export default {
-  name: 'RawImageDisplayArea',
   props: {
     name: {
       type: String,
@@ -73,4 +72,5 @@ export default {
     }
   },
   inject: ['trame'],
+  template: '<canvas class="js-canvas" v-show="hasContent"></canvas>',
 };

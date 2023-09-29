@@ -1,7 +1,6 @@
-import { DecoderWorker } from './utils';
+import { DecoderWorker } from '../utils/decoder';
 
 export default {
-  name: 'VideoDecoderDisplayArea',
   props: {
     name: {
       type: String,
@@ -70,4 +69,10 @@ export default {
     }
   },
   inject: ['trame', 'rcaPushSize'],
+  template: `
+    <div>
+      <h1 v-if="!isSupported">WebCodecs API is not supported.</h1>
+      <canvas class="js-canvas"></canvas>
+    </div>
+  `,
 };

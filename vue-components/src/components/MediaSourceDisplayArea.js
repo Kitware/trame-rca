@@ -63,7 +63,6 @@ class VideoDecoder {
 }
 
 export default {
-  name: 'MediaSourceDisplayArea',
   props: {
     name: {
       type: String,
@@ -146,4 +145,9 @@ export default {
     }
   },
   inject: ['trame', 'rcaPushSize'],
+  template: `
+    <video autoplay="autoplay" muted="muted" v-show="hasContent">
+      Your browser does not support the video tag.
+    </video>
+  `,
 };
