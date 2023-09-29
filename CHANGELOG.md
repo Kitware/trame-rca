@@ -2,6 +2,20 @@
 
 <!--next-version-placeholder-->
 
+## v0.4.0 (2023-09-29)
+
+### Feature
+
+* **examples:** Add ViewAdapter example ([`80f6ba1`](https://github.com/Kitware/trame-rca/commit/80f6ba1b1b94fe506fc6f28c836c38d13ca9bfbf))
+* **events:** Use mousebutton as eventType ([`b79052a`](https://github.com/Kitware/trame-rca/commit/b79052adac5a4e059e51f25ab8447b0680644b25))
+* **events:** Forward start/end interaction events ([`6fd02a4`](https://github.com/Kitware/trame-rca/commit/6fd02a429ed2519c333b806381834dcfa4a5684d))
+* **events:** Use vtk.js interactor ([`2819ab7`](https://github.com/Kitware/trame-rca/commit/2819ab72e0b7bd9fe8c12de2686bd179b5b52e36))
+* **vue23:** Refactor code to be vue2/3 compatible ([`1d035a8`](https://github.com/Kitware/trame-rca/commit/1d035a8c16a6612632f3b41cd93346dba857f61f))
+
+### Fix
+
+* **pre-commit:** Handle black and flake8 conflict regarding W503 ([`23eb6b2`](https://github.com/Kitware/trame-rca/commit/23eb6b2c81416306a7509c3c2f42921276cc11b3))
+
 ## v0.3.1 (2023-04-25)
 ### Fix
 * **api:** Expose only meaningful classes ([`3ccff7c`](https://github.com/Kitware/trame-rca/commit/3ccff7c53680a29f1249372d5b3d2f146e9e1af5))
