@@ -6,7 +6,7 @@
     "vue": "^2.7.0 || >=3.0.0"
   },
   "dependencies": {
-    "@kitware/vtk.js": "28.10.0"
+    "@kitware/vtk.js": "28.10.1"
   },
   "scripts": {
     "build": "vite build --emptyOutDir",
