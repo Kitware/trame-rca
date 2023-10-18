@@ -2,6 +2,12 @@
 
 <!--next-version-placeholder-->
 
+## v0.4.1 (2023-10-18)
+
+### Fix
+
+* **dependencies:** Update vtk-js ([`a694efe`](https://github.com/Kitware/trame-rca/commit/a694efe382e4eca6113be0095e44d4e9addb4818))
+
 ## v0.4.0 (2023-09-29)
 
 ### Feature
