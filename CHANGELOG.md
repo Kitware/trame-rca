@@ -2,6 +2,12 @@
 
 <!--next-version-placeholder-->
 
+## v0.4.2 (2024-05-13)
+
+### Fix
+
+* **wslink:** Add support for wslink>2 ([`813b6e2`](https://github.com/Kitware/trame-rca/commit/813b6e22be61c76070712ce76d72b7677f7b5021))
+
 ## v0.4.1 (2023-10-18)
 
 ### Fix
