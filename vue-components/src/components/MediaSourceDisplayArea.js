@@ -126,14 +126,17 @@ export default {
     };
   },
   mounted() {
-    this.onChunkAvailable = ([{ name, meta, content }]) => {
+    this.onChunkAvailable = async ([{ name, meta, content }]) => {
       if (!meta.type.includes('video/')) {
         this.hasContent = false;
         return;
       }
       if (this.name === name) {
         this.received += 1;
-        content.arrayBuffer().then((v) => this.pushChunk(v, meta.type));
+        const v = content.buffer
+          ? content
+          : new Uint8Array(await content.arrayBuffer());
+        this.pushChunk(v, meta.type);
         this.hasContent = true;
       }
     };
