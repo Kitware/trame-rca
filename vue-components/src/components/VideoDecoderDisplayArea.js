@@ -42,7 +42,7 @@ export default {
       const canvas = this.$el.querySelector('.js-canvas');
       this.worker.bindCanvas(canvas);
 
-      this.onChunkAvailable = ([{ name, meta, content }]) => {
+      this.onChunkAvailable = async ([{ name, meta, content }]) => {
         // when we do not get octet-stream or valid codec, terminate worker.
         if (
           !meta.type.includes('application/octet-stream') ||
@@ -54,9 +54,10 @@ export default {
 
         if (this.name === name && meta.codec.length) {
           this.worker.setContentType(meta.codec, meta.w, meta.h);
-          content.arrayBuffer().then((data) => {
-            this.worker.pushChunk(meta.st, meta.key, data);
-          });
+          const data = content.buffer
+            ? content
+            : new Uint8Array(await content.arrayBuffer());
+          this.worker.pushChunk(meta.st, meta.key, data);
         }
       };
 
