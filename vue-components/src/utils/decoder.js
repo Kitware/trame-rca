@@ -121,7 +121,7 @@ export class DecoderWorker {
 
   pushChunk(timestamp, type, data) {
     const action = CHUNK;
-    this.worker.postMessage({ action, timestamp, type, data }, [data]);
+    this.worker.postMessage({ action, timestamp, type, data }, [data.buffer]);
   }
 
   flush() {
