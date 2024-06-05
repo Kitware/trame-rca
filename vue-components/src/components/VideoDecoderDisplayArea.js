@@ -21,7 +21,6 @@ export default {
     cleanup() {
       if (this.worker) {
         this.worker.terminate();
-        this.worker = null;
       }
 
       // unsub trame.rca.topic.stream

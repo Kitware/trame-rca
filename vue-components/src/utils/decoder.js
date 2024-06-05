@@ -70,6 +70,11 @@ onmessage = async function({ data: msg }) {
       this.decoder.reset();
       break;
     case 6: // close
+      // flush before close() to avoid currepoted state.
+      // calling postMessage(flush)
+      //         postMessage(close) is not enough since the second
+      // abort the first before it finishes.
+      await this.decoder.flush();
       this.decoder.close();
       break;
   }
@@ -134,7 +139,9 @@ export class DecoderWorker {
 
   terminate() {
     this.worker.postMessage({ action: CLOSE });
-    this.worker.terminate();
-    this.worker = null;
+    // don't terminate immediately we need to wail for the video encoder to finish flushing
+    // not sure how to achieve this ...
+    //this.worker.terminate();
+    //this.worker = null;
   }
 }
