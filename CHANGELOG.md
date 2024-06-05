@@ -2,6 +2,17 @@
 
 <!--next-version-placeholder-->
 
+## v0.4.3 (2024-06-05)
+
+### Fix
+
+* **RawImageDisplayArea:** Use proper array type for rgba ([`12857b8`](https://github.com/Kitware/trame-rca/commit/12857b81e8b8963b64f2717272efa7ccabc73541))
+* **MediaSourceDisplayArea:** Adapt for wslink>=2 ([`de23267`](https://github.com/Kitware/trame-rca/commit/de232673ceff3f81d390012301c373c8425ce7d0))
+* **VideoDecoder:** Flush before closing the decoder ([`4c484cf`](https://github.com/Kitware/trame-rca/commit/4c484cf1871d96d90ef3548b22d67c7d4a7a7343))
+* **decoder:** Use .buffer when sending arrays ([`824c7a8`](https://github.com/Kitware/trame-rca/commit/824c7a89b2ee6898ae2050696388b33b63ca7fd2))
+* **VideoDecoderDisplayArea:** Adapt for wslink>=2 ([`9c4a990`](https://github.com/Kitware/trame-rca/commit/9c4a990285f2b136cd0e78d4c8544dcdfcf86fa1))
+* **vue:** Unmount components under both vue2 and vue3 ([`f779ee5`](https://github.com/Kitware/trame-rca/commit/f779ee5652495ad5b52421ba08c02912494e0d14))
+
 ## v0.4.2 (2024-05-13)
 
 ### Fix
