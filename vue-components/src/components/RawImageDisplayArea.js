@@ -53,9 +53,9 @@ export default {
           ctx.putImageData(imageData, 0, 0);
           this.hasContent = true;
         } else if (meta.type.includes('image/rgba32')) {
-          const data = content.buffer
-            ? content
-            : new Uint8Array(await content.arrayBuffer());
+          const data = new Uint8ClampedArray(
+            content.buffer ? content : await content.arrayBuffer()
+          );
           canvas.width = meta.w;
           canvas.height = meta.h;
           const imageData = new ImageData(data, meta.w, meta.h);
