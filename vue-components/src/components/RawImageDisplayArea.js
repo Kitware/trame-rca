@@ -14,6 +14,20 @@ export default {
       hasContent: false,
     };
   },
+  methods: {
+    cleanup() {
+      // unsub trame.rca.topic.stream
+      if (this.wslinkSubscription) {
+        if (this.trame) {
+          this.trame.client
+            .getConnection()
+            .getSession()
+            .unsubscribe(this.wslinkSubscription);
+          this.wslinkSubscription = null;
+        }
+      }
+    },
+  },
   mounted() {
     this.wslinkSubscription = null;
     const canvas = this.$el;
@@ -21,7 +35,9 @@ export default {
     this.onImage = async ([{ name, meta, content }]) => {
       if (this.name === name) {
         if (meta.type.includes('image/rgb24')) {
-          const data = content.buffer ? content : new Uint8Array(await content.arrayBuffer());
+          const data = content.buffer
+            ? content
+            : new Uint8Array(await content.arrayBuffer());
           canvas.width = meta.w;
           canvas.height = meta.h;
           const imageData = ctx.createImageData(meta.w, meta.h);
@@ -37,7 +53,9 @@ export default {
           ctx.putImageData(imageData, 0, 0);
           this.hasContent = true;
         } else if (meta.type.includes('image/rgba32')) {
-          const data = content.buffer ? content : new Uint8Array(await content.arrayBuffer());
+          const data = new Uint8ClampedArray(
+            content.buffer ? content : await content.arrayBuffer()
+          );
           canvas.width = meta.w;
           canvas.height = meta.h;
           const imageData = new ImageData(data, meta.w, meta.h);
@@ -55,17 +73,12 @@ export default {
         .subscribe('trame.rca.topic.stream', this.onImage);
     }
   },
+  // support both vue2 and vue3 unmount callbacks
+  beforeDestroy() {
+    this.cleanup();
+  },
   beforeUnmount() {
-    // unsub trame.rca.topic.stream
-    if (this.wslinkSubscription) {
-      if (this.trame) {
-        this.trame.client
-          .getConnection()
-          .getSession()
-          .unsubscribe(this.wslinkSubscription);
-        this.wslinkSubscription = null;
-      }
-    }
+    this.cleanup();
   },
   inject: ['trame'],
   template: '<canvas class="js-canvas" v-show="hasContent"></canvas>',

@@ -143,6 +143,7 @@ export default {
       this.monitor.newInteractionThreshold = v;
     },
   },
+  expose: ['sizeUnit'],
   methods: {
     sizeUnit(v) {
       let value = v;
@@ -151,6 +152,18 @@ export default {
           return `${value.toFixed(1)} ${UNITS[i]}`;
         }
         value /= 1000;
+      }
+    },
+    cleanup() {
+      this.observer.unobserve(this.$el);
+      if (this.wslinkSubscription) {
+        if (this.trame) {
+          this.trame.client
+            .getConnection()
+            .getSession()
+            .unsubscribe(this.wslinkSubscription);
+          this.wslinkSubscription = null;
+        }
       }
     },
     draw(client, server, clientColor = '#1DE9B688', serverColor = '#EF9A9A') {
@@ -243,17 +256,12 @@ export default {
   mounted() {
     this.observer.observe(this.$el);
   },
+  // support both vue2 and vue3 unmount callbacks
+  beforeDestroy() {
+    this.cleanup();
+  },
   beforeUnmount() {
-    this.observer.unobserve(this.$el);
-    if (this.wslinkSubscription) {
-      if (this.trame) {
-        this.trame.client
-          .getConnection()
-          .getSession()
-          .unsubscribe(this.wslinkSubscription);
-        this.wslinkSubscription = null;
-      }
-    }
+    this.cleanup();
   },
   inject: ['trame'],
   template: `
