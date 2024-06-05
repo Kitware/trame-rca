@@ -80,10 +80,25 @@ export default {
       received: 0,
     };
   },
+  expose: ['requestInitializationSegment'],
   methods: {
     requestInitializationSegment() {
       if (this.rcaPushSize) {
         this.rcaPushSize({ videoHeader: 1 });
+      }
+    },
+    cleanup() {
+      // unsub trame.rca.topic.stream
+      if (this.wslinkSubscription) {
+        if (this.trame) {
+          this.trame.client
+            .getConnection()
+            .getSession()
+            .unsubscribe(this.wslinkSubscription);
+          this.wslinkSubscription = null;
+          // shutdown decoder
+          this.decoder.exit();
+        }
       }
     },
   },
@@ -131,18 +146,10 @@ export default {
     }
   },
   beforeUnmount() {
-    // unsub trame.rca.topic.stream
-    if (this.wslinkSubscription) {
-      if (this.trame) {
-        this.trame.client
-          .getConnection()
-          .getSession()
-          .unsubscribe(this.wslinkSubscription);
-        this.wslinkSubscription = null;
-        // shutdown decoder
-        this.decoder.exit();
-      }
-    }
+    this.cleanup();
+  },
+  beforeDestroy() {
+    this.cleanup();
   },
   inject: ['trame', 'rcaPushSize'],
   template: `

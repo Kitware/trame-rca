@@ -16,10 +16,28 @@ export default {
       isSupported: 'VideoFrame' in window,
     };
   },
-  created() {
-    this.worker = new DecoderWorker();
+  expose: [''],
+  methods: {
+    cleanup() {
+      if (this.worker) {
+        this.worker.terminate();
+        this.worker = null;
+      }
+
+      // unsub trame.rca.topic.stream
+      if (this.wslinkSubscription) {
+        if (this.trame) {
+          this.trame.client
+            .getConnection()
+            .getSession()
+            .unsubscribe(this.wslinkSubscription);
+          this.wslinkSubscription = null;
+        }
+      }
+    },
   },
   mounted() {
+    this.worker = new DecoderWorker();
     if (this.isSupported) {
       const canvas = this.$el.querySelector('.js-canvas');
       this.worker.bindCanvas(canvas);
@@ -50,23 +68,12 @@ export default {
       }
     }
   },
+  // support both vue2 and vue3 unmount callbacks
   beforeUnmount() {
-    if (this.worker) {
-      this.worker.terminate();
-      this.worker = null;
-    }
-
-    // unsub trame.rca.topic.stream
-    if (this.wslinkSubscription) {
-      if (this.trame) {
-        this.trame.client
-          .getConnection()
-          .getSession()
-          .unsubscribe(this.wslinkSubscription);
-        this.wslinkSubscription = null;
-      }
-      this.destroyDecoder();
-    }
+    this.cleanup();
+  },
+  beforeDestroy() {
+    this.cleanup();
   },
   inject: ['trame', 'rcaPushSize'],
   template: `

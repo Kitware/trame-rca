@@ -45,6 +45,7 @@ export default {
       displayURL: '',
     };
   },
+  expose: ['resetContent', 'updatePoolSize'],
   methods: {
     resetContent() {
       this.hasContent = false;
@@ -55,6 +56,17 @@ export default {
       }
       while (this.frames.length > this.poolSize) {
         this.frames.pop();
+      }
+    },
+    cleanup() {
+      if (this.wslinkSubscription) {
+        if (this.trame) {
+          this.trame.client
+            .getConnection()
+            .getSession()
+            .unsubscribe(this.wslinkSubscription);
+          this.wslinkSubscription = null;
+        }
       }
     },
   },
@@ -84,16 +96,12 @@ export default {
         .subscribe('trame.rca.topic.stream', this.onImage);
     }
   },
+  // support both vue2 and vue3 cleanup functions
+  beforeDestroy() {
+    this.cleanup();
+  },
   beforeUnmount() {
-    if (this.wslinkSubscription) {
-      if (this.trame) {
-        this.trame.client
-          .getConnection()
-          .getSession()
-          .unsubscribe(this.wslinkSubscription);
-        this.wslinkSubscription = null;
-      }
-    }
+    this.cleanup();
   },
   inject: ['trame'],
   template: `<img :src="displayURL" v-show="hasContent" />`,
