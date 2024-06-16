@@ -2,6 +2,12 @@
 
 <!--next-version-placeholder-->
 
+## v0.4.4 (2024-06-16)
+
+### Fix
+
+* **StatisticsDisplay:** Fix data/sec counter ([`db080c3`](https://github.com/Kitware/trame-rca/commit/db080c344646d4edda6193590ca63bb1d19fe564))
+
 ## v0.4.3 (2024-06-05)
 
 ### Fix
