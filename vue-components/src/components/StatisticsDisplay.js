@@ -119,7 +119,7 @@ export default {
       default: ({ name, meta, content }) => ({
         name,
         serverTime: meta.st,
-        contentSize: content.size,
+        contentSize: content.length,
       }),
     },
   },
