@@ -18,6 +18,10 @@ export default {
       type: String,
       default: 'image',
     },
+    sendMouseMove: {
+      type: Boolean,
+      default: false,
+    },
   },
   setup(props) {
     const rootElem = ref(null);
@@ -55,6 +59,7 @@ export default {
     windowInteractor.setInteractorStyle(interactorStyle);
 
     // Mouse
+    interactorStyle.setSendMouseMove(props.sendMouseMove);
     interactorStyle.onRemoteMouseEvent((e) => {
       sendEvent(
         Object.assign(

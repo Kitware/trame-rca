@@ -32,6 +32,7 @@ class RemoteControlledArea(HtmlElement):
             "name",
             "origin",
             "display",
+            ("send_mouse_move", "sendMouseMove"),
         ]
 
 
