@@ -2,6 +2,12 @@
 
 <!--next-version-placeholder-->
 
+## v0.5.0 (2024-10-07)
+
+### Feature
+
+* **RemoteControlledArea:** Add send mouse move property ([`ba9ad39`](https://github.com/Kitware/trame-rca/commit/ba9ad390aa37b67ed05f44210da219aacbb82935))
+
 ## v0.4.4 (2024-06-16)
 
 ### Fix
