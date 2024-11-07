@@ -2,6 +2,12 @@
 
 <!--next-version-placeholder-->
 
+## v0.6.0 (2024-11-07)
+
+### Feature
+
+* **ImageDisplayArea:** Add support for conventional image types ([`fd00fa3`](https://github.com/Kitware/trame-rca/commit/fd00fa3039b6777bb33cb19ffde10bc3e843f4c4))
+
 ## v0.5.0 (2024-10-07)
 
 ### Feature
