@@ -79,8 +79,17 @@ export default {
     // Display stream
     this.wslinkSubscription = null;
     this.onImage = ([{ name, meta, content }]) => {
+      const supportedImageTypes = [
+        'image/apng',
+        'image/avif',
+        'image/gif',
+        'image/jpeg',
+        'image/png',
+        'image/svg+xml',
+        'image/webp',
+      ];
       if (this.name === name) {
-        if (meta.type === 'image/jpeg') {
+        if (supportedImageTypes.includes(meta.type)) {
           this.nextFrameIndex = (this.nextFrameIndex + 1) % this.frames.length;
           const frame = this.frames[this.nextFrameIndex];
           frame.update(meta.type, content);
