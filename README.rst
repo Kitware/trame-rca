@@ -1,5 +1,7 @@
+.. |pypi_download| image:: https://img.shields.io/pypi/dm/trame-rca
+
 =============================================
-trame-rca: Remote Controlled Area
+Remote Controlled Area |pypi_download|
 =============================================
 
 Remote Controlled Area widget for trame provide components
