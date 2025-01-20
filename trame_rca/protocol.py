@@ -32,7 +32,11 @@ class AreaAdapter:
         modifier_fn = event.get("fn", 0)
         print(f"{origin}::{event_type}: {position}")
         print(
-            f"Modifier: shift({modifier_shift}), ctrl({modifier_ctrl}), alt({modifier_alt}), command({modifier_cmd}), fn({modifier_fn})"
+            f"Modifier: shift({modifier_shift}), "
+            f"ctrl({modifier_ctrl}), "
+            f"alt({modifier_alt}), "
+            f"command({modifier_cmd}), "
+            f"fn({modifier_fn})"
         )
 
 

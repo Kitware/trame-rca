@@ -1,4 +1,4 @@
-from trame_rca.widgets.rca import *
+from trame_rca.widgets.rca import *  # noqa: F403
 
 
 def initialize(server):

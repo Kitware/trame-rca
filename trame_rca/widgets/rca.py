@@ -1,5 +1,5 @@
-"""RCA Widgets only support vue2 for now.
-"""
+"""RCA Widgets only support vue2 for now."""
+
 from trame_client.widgets.core import AbstractElement
 from .. import module
 

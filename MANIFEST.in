@@ -1,1 +1,5 @@
 graft trame_rca/module/serve
+prune examples
+prune js-lib
+prune tests
+prune vue-components
