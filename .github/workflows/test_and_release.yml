@@ -56,11 +56,23 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
 
+    - name: Install OSMesa for Linux
+      if: matrix.config.os == 'ubuntu-latest'
+      run: sudo apt-get install -y libosmesa6-dev
+
+    - name: Build Vue Components
+      run: |
+        cd vue-components
+        npm i
+        npm run build
+
     - name: Install and Run Tests
       run: |
         pip install .
         pip install -r tests/requirements.txt
         pytest -s ./tests
+      env:
+        CI: true
 
   test-npm-build:
     runs-on: ubuntu-latest
