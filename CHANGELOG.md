@@ -2,6 +2,16 @@
 
 <!--next-version-placeholder-->
 
+## v0.7.0 (2025-01-20)
+
+### Feature
+
+* **RcaViewAdapter:** Add helper classes to manage RCA views ([`56016fe`](https://github.com/Kitware/trame-rca/commit/56016fe9e71d3772e372f87e6374d055339598c6))
+
+### Documentation
+
+* Update README.rst ([`7334dde`](https://github.com/Kitware/trame-rca/commit/7334ddecd5890f48cac19e96b6f4265e9185cda1))
+
 ## v0.6.0 (2024-11-07)
 
 ### Feature
