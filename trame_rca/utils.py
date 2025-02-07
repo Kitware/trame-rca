@@ -6,6 +6,7 @@ from asyncio import Queue
 from concurrent.futures.process import ProcessPoolExecutor
 from enum import Enum
 from multiprocessing import Pool
+from packaging.version import Version
 from typing import Callable, Optional
 
 from numpy.typing import NDArray
@@ -16,6 +17,7 @@ from vtkmodules.vtkCommonDataModel import vtkImageData
 from vtkmodules.vtkRenderingCore import vtkRenderWindow, vtkWindowToImageFilter
 import json
 
+from vtkmodules.vtkCommonCore import vtkCommand, vtkVersion
 from vtkmodules.vtkWebCore import vtkRemoteInteractionAdapter
 
 
@@ -275,6 +277,10 @@ class RcaViewAdapter:
         width = max(1, int(size.get("w", 300)))
         height = max(1, int(size.get("h", 300)))
         self._iren.UpdateSize(width, height)
+
+        if Version(vtkVersion().vtk_version) < Version("9.5"):
+            self._iren.InvokeEvent(vtkCommand.WindowResizeEvent)
+
         self._scheduler.schedule_render()
 
     def push(self, content, meta: dict):
