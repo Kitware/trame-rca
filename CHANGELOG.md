@@ -1,6 +1,17 @@
 # CHANGELOG
 
 
+## v1.1.1 (2025-02-07)
+
+### Bug Fixes
+
+- **RcaViewAdapter**: Enforce WindowResizeEvent on linux
+  ([`263aad6`](https://github.com/Kitware/trame-rca/commit/263aad6c241d436dc2ec10a1ceb14a108d099a3c))
+
+Manual invoke event can be removed when VTK has the following MR merged See
+  https://gitlab.kitware.com/vtk/vtk/-/merge_requests/11905
+
+
 ## v1.1.0 (2025-01-20)
 
 ### Bug Fixes
