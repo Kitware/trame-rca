@@ -75,3 +75,13 @@ class StreamManager(LinkProtocol):
             adapter.on_interaction(origin, event)
         else:
             print(f"No area {area_name} available for event")
+
+    @exportRpc("trame.rca.ack_id")
+    def on_ack_id(self, area_name, ack_id):
+        # if ack_id is sent with a frame, it is echoed back to the
+        # adapter when the frame is received.
+        adapter = self._area_adapters.get(area_name, None)
+        if adapter:
+            adapter.on_ack_id(ack_id)
+        else:
+            print(f"No area {area_name} available for event")
