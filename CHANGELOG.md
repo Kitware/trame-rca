@@ -1,6 +1,29 @@
 # CHANGELOG
 
 
+## v1.2.0 (2025-03-06)
+
+### Bug Fixes
+
+- **ci**: Fix missing dependency
+  ([`fd0eece`](https://github.com/Kitware/trame-rca/commit/fd0eececd899f7ebea89f722d3154365e8900627))
+
+* Add missing RcaViewAdapter dependencies
+
+- **RcaRenderScheduler**: Fix RcaRenderScheduler meta type
+  ([`dd1960f`](https://github.com/Kitware/trame-rca/commit/dd1960f24bb111ce5533cd710ae57ba4482c49b3))
+
+* Fix RcaRenderScheduler wrong image meta type for Python 3.11+ caused by str Enum mixin behavior
+  change.
+
+### Features
+
+- **RcaViewAdapter**: Add method to schedule render
+  ([`c90edda`](https://github.com/Kitware/trame-rca/commit/c90eddacdd9ca44c1a9bc7413580d3fde6031fa2))
+
+* Add method to schedule render from adapter * Update example with schedule render usage
+
+
 ## v1.1.1 (2025-02-07)
 
 ### Bug Fixes
