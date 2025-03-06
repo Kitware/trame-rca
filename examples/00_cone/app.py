@@ -22,6 +22,8 @@ server = get_server()
 server.client_type = "vue2"
 ctrl = server.controller
 
+DEFAULT_RESOLUTION = 6
+
 
 @ctrl.add("on_server_ready")
 def init_rca(**kwargs):
@@ -49,6 +51,15 @@ def init_rca(**kwargs):
     renderer.AddActor(actor)
     renderer.ResetCamera()
 
+    @server.state.change("resolution")
+    def update_cone(resolution=DEFAULT_RESOLUTION, **kwargs):
+        cone_source.SetResolution(resolution)
+        view_handler.schedule_render()
+
+
+def update_reset_resolution():
+    server.state.resolution = DEFAULT_RESOLUTION
+
 
 # -----------------------------------------------------------------------------
 # Trame
@@ -57,6 +68,21 @@ def init_rca(**kwargs):
 
 with SinglePageLayout(server) as layout:
     layout.title.set_text("Hello trame")
+
+    with layout.toolbar:
+        vuetify.VSpacer()
+        vuetify.VSlider(
+            v_model=("resolution", DEFAULT_RESOLUTION),
+            min=3,
+            max=60,
+            step=1,
+            hide_details=True,
+            dense=True,
+            style="max-width: 300px",
+        )
+
+        with vuetify.VBtn(icon=True, click=update_reset_resolution):
+            vuetify.VIcon("mdi-undo-variant")
 
     with layout.content:
         with vuetify.VContainer(

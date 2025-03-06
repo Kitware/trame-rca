@@ -322,3 +322,9 @@ class RcaViewAdapter:
         vtkRemoteInteractionAdapter.ProcessEvent(self._iren, json.dumps(event))
         if self._do_render_on_interaction:
             self._scheduler.schedule_render()
+
+    def schedule_render(self):
+        """
+        Schedule a render and push to the RCA view when rendering is ready.
+        """
+        self._scheduler.schedule_render()
