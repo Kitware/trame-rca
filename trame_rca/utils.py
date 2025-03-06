@@ -21,7 +21,7 @@ from vtkmodules.vtkCommonCore import vtkCommand, vtkVersion
 from vtkmodules.vtkWebCore import vtkRemoteInteractionAdapter
 
 
-class RcaEncoder(str, Enum):
+class RcaEncoder(Enum):
     AVIF = "avif"
     JPEG = "jpeg"
     PNG = "png"
@@ -147,7 +147,7 @@ class RcaRenderScheduler:
                 "RcaRenderScheduler is only compatible with VTK RenderWindows."
             )
 
-        self._rca_encoder = rca_encoder or RcaEncoder.JPEG
+        self._rca_encoder = RcaEncoder(rca_encoder or RcaEncoder.JPEG)
         self._push_callback = push_callback
         self._window = window
         self._target_fps = target_fps or 30.0
@@ -224,7 +224,7 @@ class RcaRenderScheduler:
                     self._encode_pool.submit(
                         encode_np_img_to_format_with_meta,
                         np_img,
-                        self._rca_encoder,
+                        self._rca_encoder.value,
                         cols,
                         rows,
                         quality,
