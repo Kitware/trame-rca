@@ -203,3 +203,14 @@ def test_rca_view_is_interactive(server):
         # Expect image to have been updated following user action
         new_img_url = element.get_attribute("src")
         assert initial_img_url != new_img_url
+
+
+@pytest.mark.parametrize("encoder", [e.value for e in RcaEncoder])
+def test_scheduler_is_compatible_with_string_encoder_format(encoder, a_threed_view):
+    RcaRenderScheduler(
+        a_threed_view,
+        push_callback=MagicMock(),
+        target_fps=20,
+        interactive_quality=0,
+        rca_encoder=encoder,
+    )
