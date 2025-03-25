@@ -29,7 +29,8 @@ export default {
       <image-display-area v-if="display === 'image'" :name="name" :origin="origin" :poolSize="4" />
       <media-source-display-area v-if="display === 'media-source'" :name="name" :origin="origin" />
       <video-decoder-display-area v-if="display === 'video-decoder'" :name="name" :origin="origin" />
-      <raw-image-display-area v-if="display === 'raw-image'" :name="name" :origin="origin" />
+      <raw-image-display-area v-if="display === 'raw-image'" :name="name" :origin="origin"
+        @user_data="(d) => $emit('user_data', d)"/>
     </div>
   `,
 };
