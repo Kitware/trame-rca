@@ -6,6 +6,7 @@ from .. import module
 
 __all__ = [
     "RemoteControlledArea",
+    "GenericRemoteControlledArea",
     "DisplayArea",
     "StatisticsDisplay",
     "ImageDisplayArea",
@@ -62,6 +63,19 @@ class RemoteControlledArea(HtmlElement):
     def _on_ready(self, **_):
         for handler in self._handlers:
             self.server.controller.rc_area_register(handler)
+
+
+class GenericRemoteControlledArea(HtmlElement):
+    def __init__(self, **kwargs):
+        super().__init__(
+            "generic-remote-controlled-area",
+            **kwargs,
+        )
+        self._attr_names += [
+            "name",
+            "origin",
+            "display",
+        ]
 
 
 class DisplayArea(HtmlElement):
