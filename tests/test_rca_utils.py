@@ -13,7 +13,7 @@ from PIL import Image
 from trame_rca.utils import (
     RcaEncoder,
     RcaRenderScheduler,
-    encode_np_img_to_bytes,
+    get_encode_fn,
     encode_np_img_to_format_with_meta,
     render_to_image,
     time_now_ms,
@@ -55,7 +55,8 @@ def a_threed_view():
 
 @pytest.mark.parametrize("img_format", ["jpeg", "png", "avif", "webp"])
 def test_a_view_can_be_encoded_to_format(a_threed_view, tmpdir, img_format):
-    img = encode_np_img_to_bytes(
+    encode_fn = get_encode_fn(RcaEncoder(img_format))
+    img = encode_fn(
         *vtk_img_to_numpy_array(render_to_image(a_threed_view)),
         img_format,
         100,
@@ -73,11 +74,12 @@ def test_a_view_can_be_encoded_to_format(a_threed_view, tmpdir, img_format):
 def test_np_encode_can_be_done_using_multiprocess(a_threed_view, img_format):
     array, cols, rows = vtk_img_to_numpy_array(render_to_image(a_threed_view))
     now_ms = time_now_ms()
+    encode_fn = get_encode_fn(RcaEncoder(img_format))
 
     with Pool(1) as p:
         encoded, meta, ret_now_ms = p.apply(
             encode_np_img_to_format_with_meta,
-            args=(array, img_format, cols, rows, 100, now_ms),
+            args=(encode_fn, array, img_format, cols, rows, 100, now_ms),
         )
         assert meta
         assert meta["st"] == now_ms
