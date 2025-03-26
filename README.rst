@@ -45,12 +45,34 @@ Install the component
 Optional dependencies
 -----------------------------------------------------------
 
-Faster Jpeg encoding with TurboJPEG.
+Faster Jpeg encoding using TurboJPEG.
 
-```
-brew install jpeg-turbo
-pip install trame trame-vuetify vtk 
-pip install "trame-rca[turbo]"
+**macOS system install**
 
-python ./examples/00_cone/app.py --encoder turbo-jpeg
-```
+.. code-block:: console
+
+    # macOS
+    brew install jpeg-turbo
+
+**Windows install**
+
+Download and install from Github: https://github.com/libjpeg-turbo/libjpeg-turbo/releases
+
+**Linux install**
+
+.. code-block:: console
+
+    # RHEL/CentOS/Fedora
+    # YUM doc: https://libjpeg-turbo.org/Downloads/YUM
+
+    # Ubuntu
+    apt-get install libturbojpeg
+
+Once your system is ready, you can try our code example:
+
+.. code-block:: console
+
+    pip install trame trame-vuetify vtk
+    pip install "trame-rca[turbo]"
+
+    python ./examples/00_cone/app.py --encoder turbo-jpeg
