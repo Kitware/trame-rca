@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v1.3.1 (2025-03-26)
+
+### Bug Fixes
+
+- **readme**: For pypi publish
+  ([`ad71a1c`](https://github.com/Kitware/trame-rca/commit/ad71a1c95ab3ce933900731f19eaf5f928c92252))
+
+
 ## v1.3.0 (2025-03-26)
 
 ### Continuous Integration
