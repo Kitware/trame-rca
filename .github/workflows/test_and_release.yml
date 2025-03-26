@@ -58,7 +58,7 @@ jobs:
 
     - name: Install OSMesa for Linux
       if: matrix.config.os == 'ubuntu-latest'
-      run: sudo apt-get install -y libosmesa6-dev
+      run: sudo apt-get install -y libosmesa6-dev libturbojpeg
 
     - name: Set Up Node
       uses: actions/setup-node@v4
@@ -73,7 +73,7 @@ jobs:
 
     - name: Install and Run Tests
       run: |
-        pip install .
+        pip install ".[turbo]"
         pip install -r tests/requirements.txt
         pytest -s ./tests
       env:
