@@ -20,41 +20,32 @@ import json
 from vtkmodules.vtkCommonCore import vtkCommand, vtkVersion
 from vtkmodules.vtkWebCore import vtkRemoteInteractionAdapter
 
+TO_IMAGE_TYPE = {
+    "avif": "image/avif",
+    "jpeg": "image/jpeg",
+    "turbo-jpeg": "image/jpeg",
+    "png": "image/png",
+    "webp": "image/webp",
+}
+
 
 class RcaEncoder(Enum):
     AVIF = "avif"
     JPEG = "jpeg"
+    TURBO_JPEG = "turbo-jpeg"
     PNG = "png"
     WEBP = "webp"
 
 
-def encode_np_img_to_bytes(
-    image: NDArray,
-    cols: int,
-    rows: int,
-    img_format: str,
-    quality: int,
-) -> bytes:
-    """
-    Numpy implementation of JPEG conversion of the input image.
-    Input image should be a numpy array as extracted from the render to image function.
-    This method uses numpy arrays as input for compatibility with Python's multiprocessing.
-    """
-    from io import BytesIO
+def get_encode_fn(encoder: RcaEncoder):
+    if encoder is RcaEncoder.TURBO_JPEG:
+        from trame_rca.encoders.turbo_jpeg import encode_np_img_to_bytes as encode_turbo
 
-    import pillow_avif  # noqa
-    from PIL import Image
+        return encode_turbo
 
-    if not (cols and rows):
-        return b""
+    from trame_rca.encoders.pil import encode_np_img_to_bytes as encode_pil
 
-    image = image.reshape((cols, rows, -1))
-    image = image[::-1, :, :]
-    fake_file = BytesIO()
-    image = Image.fromarray(image)
-    image.save(fake_file, img_format, quality=quality)
-
-    return fake_file.getvalue()
+    return encode_pil
 
 
 def time_now_ms() -> int:
@@ -62,6 +53,7 @@ def time_now_ms() -> int:
 
 
 def encode_np_img_to_format_with_meta(
+    encode_fn: Callable[[NDArray, int, int, str, int], bytes],
     np_image: NDArray,
     img_format: str,
     cols: int,
@@ -70,7 +62,7 @@ def encode_np_img_to_format_with_meta(
     now_ms: int,
 ) -> tuple[bytes, dict, int]:
     meta = dict(
-        type=f"image/{img_format}",
+        type=TO_IMAGE_TYPE[img_format],
         codec="",
         w=cols,
         h=rows,
@@ -80,7 +72,7 @@ def encode_np_img_to_format_with_meta(
     )
 
     return (
-        encode_np_img_to_bytes(np_image, cols, rows, img_format, quality),
+        encode_fn(np_image, cols, rows, img_format, quality),
         meta,
         now_ms,
     )
@@ -148,6 +140,7 @@ class RcaRenderScheduler:
             )
 
         self._rca_encoder = RcaEncoder(rca_encoder or RcaEncoder.JPEG)
+        self._encode_fn = get_encode_fn(self._rca_encoder)
         self._push_callback = push_callback
         self._window = window
         self._target_fps = target_fps or 30.0
@@ -223,6 +216,7 @@ class RcaRenderScheduler:
                 asyncio.wrap_future(
                     self._encode_pool.submit(
                         encode_np_img_to_format_with_meta,
+                        self._encode_fn,
                         np_img,
                         self._rca_encoder.value,
                         cols,
@@ -268,6 +262,39 @@ class RcaViewAdapter:
         self._window.ShowWindowOff()
         self._press_set = set()
         self._do_render_on_interaction = do_schedule_render_on_interaction
+        self._scale = 1
+        self._current_size = None
+
+    def update_quality(self, interactive=50, still=90):
+        self._scheduler._interactive_quality = interactive
+        self._scheduler._still_quality = still
+
+    @property
+    def image_size(self):
+        if self._current_size is None:
+            return (300, 300)
+        return int(self._current_size[0] * self._current_size[2] * self._scale), int(
+            self._current_size[1] * self._current_size[2] * self._scale
+        )
+
+    @property
+    def scale(self):
+        return self._scale
+
+    @scale.setter
+    def scale(self, value):
+        if self._scale != value:
+            self._scale = value
+
+        if self._current_size is not None:
+            self.update_size(
+                "self",
+                {
+                    "w": self._current_size[0],
+                    "h": self._current_size[1],
+                    "p": self._current_size[2],
+                },
+            )
 
     def set_streamer(self, stream_manager):
         self.streamer = stream_manager
@@ -276,6 +303,10 @@ class RcaViewAdapter:
         # Resize to one pixel min to avoid rendering problems in VTK
         width = max(1, int(size.get("w", 300)))
         height = max(1, int(size.get("h", 300)))
+        pixel_ratio = size.get("p", 1)
+        self._current_size = (width, height, pixel_ratio)
+        width = int(width * pixel_ratio * self._scale)
+        height = int(height * pixel_ratio * self._scale)
         self._iren.UpdateSize(width, height)
 
         if Version(vtkVersion().vtk_version) < Version("9.5"):
