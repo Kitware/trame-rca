@@ -1,32 +1,36 @@
 from __future__ import annotations
 
+import os
 import asyncio
 import time
 from asyncio import Queue
-from concurrent.futures.process import ProcessPoolExecutor
+from concurrent.futures.thread import ThreadPoolExecutor
+from concurrent.futures import Executor
 from enum import Enum
-from multiprocessing import Pool
 from packaging.version import Version
 from typing import Callable, Optional
 
 from numpy.typing import NDArray
 from trame.app import asynchronous
-from trame.app.singleton import Singleton
 from vtkmodules.util.numpy_support import vtk_to_numpy
-from vtkmodules.vtkCommonDataModel import vtkImageData
 from vtkmodules.vtkRenderingCore import vtkRenderWindow, vtkWindowToImageFilter
 import json
+from trame_rca.encoders.pil import encode as encode_pil
 
 from vtkmodules.vtkCommonCore import vtkCommand, vtkVersion
 from vtkmodules.vtkWebCore import vtkRemoteInteractionAdapter
 
-TO_IMAGE_TYPE = {
-    "avif": "image/avif",
-    "jpeg": "image/jpeg",
-    "turbo-jpeg": "image/jpeg",
-    "png": "image/png",
-    "webp": "image/webp",
-}
+try:
+    from trame_rca.encoders.turbo_jpeg import encode as encode_turbo
+except ImportError:
+    print("Turbo JPEG - NOT AVAILABLE")
+    encode_turbo = encode_pil
+
+ENCODING_POOL = ThreadPoolExecutor(max(4, os.cpu_count()))
+
+
+def time_now_ms() -> int:
+    return int(time.time_ns() / 1000000)
 
 
 class RcaEncoder(Enum):
@@ -36,76 +40,46 @@ class RcaEncoder(Enum):
     PNG = "png"
     WEBP = "webp"
 
+    @property
+    def _impl(self):
+        """Return encoding method"""
+        if self is RcaEncoder.TURBO_JPEG:
+            return encode_turbo
 
-def get_encode_fn(encoder: RcaEncoder):
-    if encoder is RcaEncoder.TURBO_JPEG:
-        from trame_rca.encoders.turbo_jpeg import encode_np_img_to_bytes as encode_turbo
+        return encode_pil
 
-        return encode_turbo
-
-    from trame_rca.encoders.pil import encode_np_img_to_bytes as encode_pil
-
-    return encode_pil
-
-
-def time_now_ms() -> int:
-    return int(time.time_ns() / 1000000)
-
-
-def encode_np_img_to_format_with_meta(
-    encode_fn: Callable[[NDArray, int, int, str, int], bytes],
-    np_image: NDArray,
-    img_format: str,
-    cols: int,
-    rows: int,
-    quality: int,
-    now_ms: int,
-) -> tuple[bytes, dict, int]:
-    meta = dict(
-        type=TO_IMAGE_TYPE[img_format],
-        codec="",
-        w=cols,
-        h=rows,
-        st=now_ms,
-        key="key",
-        quality=quality,
-    )
-
-    return (
-        encode_fn(np_image, cols, rows, img_format, quality),
-        meta,
-        now_ms,
-    )
+    def encode(
+        self,
+        np_image: NDArray,
+        cols: int,
+        rows: int,
+        quality: int,
+    ) -> tuple[bytes, dict, int]:
+        now_ms = time_now_ms()
+        return self._impl(np_image, self.value, cols, rows, quality, now_ms)
 
 
-def render_to_image(view) -> vtkImageData:
-    """
-    Renders the input vtkRenderWindow to a vtkImageData
-    """
-    view.Render()
-    window_to_image = vtkWindowToImageFilter()
-    window_to_image.SetInput(view)
-    window_to_image.SetScale(1)
-    window_to_image.ReadFrontBufferOff()
-    window_to_image.ShouldRerenderOff()
-    window_to_image.FixBoundaryOn()
-    window_to_image.Update()
-    return window_to_image.GetOutput()
+class VtkImageExtract:
+    def __init__(self, render_window):
+        self.render_window = render_window
+        self.window_to_image = vtkWindowToImageFilter()
+        self.window_to_image.SetInput(render_window)
+        self.window_to_image.SetScale(1)
+        self.window_to_image.ReadFrontBufferOff()
+        self.window_to_image.ShouldRerenderOff()
+        self.window_to_image.FixBoundaryOn()
 
+    @property
+    def img_cols_rows(self):
+        self.render_window.Render()
+        self.window_to_image.Modified()
+        self.window_to_image.Update()
 
-def vtk_img_to_numpy_array(image_data: vtkImageData) -> tuple[NDArray, int, int]:
-    """
-    Converts the input vtkImageData to numpy format.
-    """
-    rows, cols, _ = image_data.GetDimensions()
-    scalars = image_data.GetPointData().GetScalars()
-    return vtk_to_numpy(scalars), cols, rows
+        image_data = self.window_to_image.GetOutput()
+        rows, cols, _ = image_data.GetDimensions()
+        scalars = image_data.GetPointData().GetScalars()
 
-
-@Singleton
-class RcaRenderingPool:
-    def __init__(self):
-        self.pool = ProcessPoolExecutor()
+        return vtk_to_numpy(scalars), cols, rows
 
 
 class RcaRenderScheduler:
@@ -125,22 +99,20 @@ class RcaRenderScheduler:
         window: vtkRenderWindow,
         *,
         push_callback: Optional[Callable[[bytes, dict], None]] = None,
-        encode_pool: ProcessPoolExecutor = None,
+        encode_pool: Executor = None,
         target_fps: Optional[float] = None,
         interactive_quality: Optional[int] = None,
         still_quality: Optional[int] = None,
         rca_encoder: Optional[RcaEncoder | str] = None,
     ):
-        super().__init__()
-
         if not isinstance(window, vtkRenderWindow):
             raise RuntimeError(
                 "Invalid input window. "
                 "RcaRenderScheduler is only compatible with VTK RenderWindows."
             )
 
+        self._vtk_view_adapter = VtkImageExtract(window)
         self._rca_encoder = RcaEncoder(rca_encoder or RcaEncoder.JPEG)
-        self._encode_fn = get_encode_fn(self._rca_encoder)
         self._push_callback = push_callback
         self._window = window
         self._target_fps = target_fps or 30.0
@@ -160,7 +132,7 @@ class RcaRenderScheduler:
         self._push_queue = Queue()
 
         self._is_closing = False
-        self._encode_pool: Pool = encode_pool or RcaRenderingPool().pool
+        self._encode_pool: Executor = encode_pool or ENCODING_POOL
         self._render_quality_task = asynchronous.create_task(self._render_quality())
         self._render_task = asynchronous.create_task(self._render())
         self._push_task = asynchronous.create_task(self._push())
@@ -210,19 +182,15 @@ class RcaRenderScheduler:
     async def _render(self):
         while not self._is_closing:
             quality = await self._render_quality_queue.get()
-            now_ms = time_now_ms()
-            np_img, cols, rows = vtk_img_to_numpy_array(render_to_image(self._window))
+            np_img, cols, rows = self._vtk_view_adapter.img_cols_rows
             await self._push_queue.put(
                 asyncio.wrap_future(
                     self._encode_pool.submit(
-                        encode_np_img_to_format_with_meta,
-                        self._encode_fn,
+                        self._rca_encoder.encode,
                         np_img,
-                        self._rca_encoder.value,
                         cols,
                         rows,
                         quality,
-                        now_ms,
                     )
                 )
             )
@@ -245,11 +213,19 @@ class RcaViewAdapter:
     def __init__(
         self,
         window: vtkRenderWindow,
-        scheduler: RcaRenderScheduler,
         name: str,
         *,
+        scheduler: RcaRenderScheduler = None,
         do_schedule_render_on_interaction=True,
     ):
+        if scheduler is None:
+            scheduler = RcaRenderScheduler(
+                window,
+                target_fps=30,
+                rca_encoder="turbo-jpeg",  # will fallback to jpeg if turbo not available
+                encode_pool=ENCODING_POOL,
+            )
+
         self._scheduler = scheduler
         self._scheduler.set_push_callback(self.push)
         self._window = window
@@ -301,8 +277,8 @@ class RcaViewAdapter:
 
     def update_size(self, origin, size):
         # Resize to one pixel min to avoid rendering problems in VTK
-        width = max(1, int(size.get("w", 300)))
-        height = max(1, int(size.get("h", 300)))
+        width = max(10, int(size.get("w", 300)))
+        height = max(10, int(size.get("h", 300)))
         pixel_ratio = size.get("p", 1)
         self._current_size = (width, height, pixel_ratio)
         width = int(width * pixel_ratio * self._scale)
@@ -359,3 +335,6 @@ class RcaViewAdapter:
         Schedule a render and push to the RCA view when rendering is ready.
         """
         self._scheduler.schedule_render()
+
+    def render(self):
+        self.schedule_render()

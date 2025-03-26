@@ -1,15 +1,40 @@
 from numpy.typing import NDArray
 from turbojpeg import TurboJPEG
+from trame_rca.encoders.img import TO_IMAGE_TYPE
 # import time
 
 jpeg = TurboJPEG()
+
+
+def encode(
+    np_image: NDArray,
+    img_format: str,
+    cols: int,
+    rows: int,
+    quality: int,
+    now_ms: int,
+) -> tuple[bytes, dict, int]:
+    meta = dict(
+        type=TO_IMAGE_TYPE[img_format],
+        codec="",
+        w=cols,
+        h=rows,
+        st=now_ms,
+        key="key",
+        quality=quality,
+    )
+
+    return (
+        encode_np_img_to_bytes(np_image, cols, rows, quality),
+        meta,
+        now_ms,
+    )
 
 
 def encode_np_img_to_bytes(
     image: NDArray,
     cols: int,
     rows: int,
-    img_format: str,
     quality: int,
 ) -> bytes:
     if not (cols and rows):

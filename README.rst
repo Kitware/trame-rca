@@ -75,4 +75,5 @@ Once your system is ready, you can try our code example:
     pip install trame trame-vuetify vtk
     pip install "trame-rca[turbo]"
 
-    python ./examples/00_cone/app.py --encoder turbo-jpeg
+    # other encoders: jpeg, avif, turbo-jpeg, png, webp
+    python ./examples/vtk_cone_simple.py --encoder turbo-jpeg
