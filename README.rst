@@ -18,13 +18,13 @@ on its core to connect and drive any kind of backend that could
 produce images/video-stream and react to mouse interaction.
 
 License
---------------------
+-----------------------------------------------------------
 
 trame-rca is made available under the Apache Software License.
 
 
 Development
---------------------
+-----------------------------------------------------------
 
 Build and install the Vue components
 
@@ -40,3 +40,17 @@ Install the component
 .. code-block:: console
 
     pip install -e .
+
+
+Optional dependencies
+-----------------------------------------------------------
+
+Faster Jpeg encoding with TurboJPEG.
+
+```
+brew install jpeg-turbo
+pip install trame trame-vuetify vtk 
+pip install "trame-rca[turbo]"
+
+python ./examples/00_cone/app.py --encoder turbo-jpeg
+```
