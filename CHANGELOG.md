@@ -1,6 +1,24 @@
 # CHANGELOG
 
 
+## v1.3.0 (2025-03-26)
+
+### Continuous Integration
+
+- Install turbo-jpeg for tests
+  ([`1fd21f9`](https://github.com/Kitware/trame-rca/commit/1fd21f988893a9b263c55ac2f3ed0624e7f0e78b))
+
+### Features
+
+- **encoder**: Add new turbo jpeg encoder
+  ([`67c23a7`](https://github.com/Kitware/trame-rca/commit/67c23a76eb005c5a25e7712c1c28e15afce1fc89))
+
+### Testing
+
+- Fix api call
+  ([`216ed29`](https://github.com/Kitware/trame-rca/commit/216ed293590422c43ae63cfad5369c03ba598aeb))
+
+
 ## v1.2.0 (2025-03-06)
 
 ### Bug Fixes
