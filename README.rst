@@ -76,4 +76,4 @@ Once your system is ready, you can try our code example:
     pip install "trame-rca[turbo]"
 
     # other encoders: jpeg, avif, turbo-jpeg, png, webp
-    python ./examples/vtk_cone_simple.py --encoder turbo-jpeg
+    python ./examples/01_vtk/vtk_cone_simple.py --encoder turbo-jpeg

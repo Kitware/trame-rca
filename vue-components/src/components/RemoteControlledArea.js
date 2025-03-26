@@ -22,6 +22,10 @@ export default {
       type: Boolean,
       default: false,
     },
+    imageStyle: {
+      type: Object,
+      default: () => ({ width: '100%' }),
+    },
   },
   setup(props) {
     const rootElem = ref(null);
@@ -207,7 +211,7 @@ export default {
   template: `
     <div ref="rootElem" style="margin: 0; padding: 0; position: relative; width: 100%; height: 100%;">
       <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;">
-        <display-area :display="display" :name="name" :origin="origin" />
+        <display-area :display="display" :name="name" :origin="origin" :imageStyle="imageStyle" />
         <slot></slot>
       </div>
     </div>

@@ -72,7 +72,6 @@ class ConeApp:
         mapper.SetInputConnection(cone_source.GetOutputPort())
         actor = vtkActor()
         actor.SetMapper(mapper)
-        actor.GetProperty().SetColor(1, 0.8, 0.8)
 
         renderer.AddActor(actor)
         renderer.ResetCamera()
@@ -137,7 +136,7 @@ class ConeApp:
                         name="view",
                         display="image",
                     )
-                    self.view_handler = view.create_vtk_handler(
+                    self.view_handler = view.create_view_handler(
                         self.render_window,
                         encoder=self.state.encoder,
                     )
