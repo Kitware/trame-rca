@@ -2,7 +2,7 @@ from numpy.typing import NDArray
 from io import BytesIO
 import pillow_avif  # noqa
 from PIL import Image
-from trame_rca.encoders.img import TO_IMAGE_TYPE, TO_IMAGE_FOMAT
+from trame_rca.encoders.img import TO_IMAGE_TYPE, TO_IMAGE_FORMAT
 
 
 def encode(
@@ -51,7 +51,7 @@ def encode_np_img_to_bytes(
     image = image[::-1, :, :]
     fake_file = BytesIO()
     image = Image.fromarray(image)
-    image.save(fake_file, TO_IMAGE_FOMAT[img_format], quality=quality)
+    image.save(fake_file, TO_IMAGE_FORMAT[img_format], quality=quality)
     # t1 = time.time()
     # print(f"pill encode {t1-t0:.04f}s")
 
