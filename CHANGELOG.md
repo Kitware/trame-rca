@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v2.0.1 (2025-03-27)
+
+### Bug Fixes
+
+- **rca_encoder**: Fix turbo JPEG encode color
+  ([`fd6e3d6`](https://github.com/Kitware/trame-rca/commit/fd6e3d6ea5c31f6738c48ca222f1c31f3939aba4))
+
+
 ## v2.0.0 (2025-03-27)
 
 ### Bug Fixes
