@@ -22,8 +22,11 @@ from vtkmodules.vtkWebCore import vtkRemoteInteractionAdapter
 
 try:
     from trame_rca.encoders.turbo_jpeg import encode as encode_turbo
-except ImportError:
-    print("Turbo JPEG - NOT AVAILABLE")
+except RuntimeError:
+    print("Turbo JPEG - NOT AVAILABLE (System Library)")
+    encode_turbo = encode_pil
+except ModuleNotFoundError:
+    print("Turbo JPEG - NOT AVAILABLE (Python package)")
     encode_turbo = encode_pil
 
 ENCODING_POOL = ThreadPoolExecutor(max(4, os.cpu_count()))
