@@ -98,7 +98,7 @@ class ViewAdapter:
 
     def _get_metadata(self):
         return dict(
-            type="image/jpeg",
+            type="image/jpeg",  # supported mime/type
             codec="",  # video codec, not relevant here
             w=self._view.GetSize()[0],
             h=self._view.GetSize()[1],
@@ -152,12 +152,7 @@ class ViewAdapter:
             self.animating = False
         else:
             event_str = json.dumps(event)
-            status = vtkRemoteInteractionAdapter.ProcessEvent(self._iren, event_str)
-
-            # Force Render next time InteractiveRender is called
-            if status:
-                ...
-                # HELPER.InvalidateCache(self._view)
+            vtkRemoteInteractionAdapter.ProcessEvent(self._iren, event_str)
 
 
 @TrameApp()

@@ -336,5 +336,5 @@ class RcaViewAdapter:
         """
         self._scheduler.schedule_render()
 
-    def render(self):
+    def update(self):
         self.schedule_render()

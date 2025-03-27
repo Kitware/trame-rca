@@ -1,4 +1,4 @@
-"""RCA Widgets only support vue2 for now."""
+"""RCA Widgets support both vue2 and vue3."""
 
 from trame_client.widgets.core import AbstractElement
 from trame_rca.utils import RcaViewAdapter, RcaRenderScheduler

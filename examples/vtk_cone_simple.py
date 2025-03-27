@@ -152,7 +152,7 @@ class ConeApp:
     @change("resolution")
     def update_cone(self, resolution, **kwargs):
         self.cone_source.SetResolution(resolution)
-        self.view_handler.render()
+        self.view_handler.update()
 
     @change("scale")
     def update_scale(self, scale, **_):

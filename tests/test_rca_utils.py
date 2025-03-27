@@ -13,11 +13,8 @@ from PIL import Image
 from trame_rca.utils import (
     RcaEncoder,
     RcaRenderScheduler,
-    get_encode_fn,
-    encode_np_img_to_format_with_meta,
-    render_to_image,
+    VtkImageExtract,
     time_now_ms,
-    vtk_img_to_numpy_array,
 )
 
 from vtkmodules.vtkFiltersSources import vtkConeSource
@@ -55,15 +52,11 @@ def a_threed_view():
 
 @pytest.mark.parametrize("img_format", ["jpeg", "png", "avif", "webp"])
 def test_a_view_can_be_encoded_to_format(a_threed_view, tmpdir, img_format):
-    encode_fn = get_encode_fn(RcaEncoder(img_format))
-    img = encode_fn(
-        *vtk_img_to_numpy_array(render_to_image(a_threed_view)),
-        img_format,
-        100,
+    img, *_ = RcaEncoder(img_format).encode(
+        *VtkImageExtract(a_threed_view).img_cols_rows, 100
     )
-    dest_file = Path(tmpdir).joinpath(f"test_img.{img_format}")
-    with open(dest_file, "wb") as f:
-        f.write(img)
+    dest_file = Path(tmpdir) / f"test_img.{img_format}"
+    dest_file.write_bytes(img)
 
     assert dest_file.is_file()
     im = Image.open(dest_file)
@@ -72,18 +65,18 @@ def test_a_view_can_be_encoded_to_format(a_threed_view, tmpdir, img_format):
 
 @pytest.mark.parametrize("img_format", ["jpeg", "png", "avif", "webp"])
 def test_np_encode_can_be_done_using_multiprocess(a_threed_view, img_format):
-    array, cols, rows = vtk_img_to_numpy_array(render_to_image(a_threed_view))
+    encoder = RcaEncoder(img_format)
+    array, cols, rows = VtkImageExtract(a_threed_view).img_cols_rows
     now_ms = time_now_ms()
-    encode_fn = get_encode_fn(RcaEncoder(img_format))
 
     with Pool(1) as p:
         encoded, meta, ret_now_ms = p.apply(
-            encode_np_img_to_format_with_meta,
-            args=(encode_fn, array, img_format, cols, rows, 100, now_ms),
+            encoder.encode,
+            args=(array, cols, rows, 100),
         )
         assert meta
-        assert meta["st"] == now_ms
-        assert ret_now_ms == now_ms
+        assert meta["st"] >= now_ms
+        assert ret_now_ms >= now_ms
         assert encoded
 
 
@@ -186,7 +179,7 @@ async def test_groups_close_request_render_together(
         await scheduler.close()
 
 
-@pytest.mark.parametrize("server_path", ["examples/00_cone/app.py"])
+@pytest.mark.parametrize("server_path", ["examples/vtk_cone_simple.py"])
 def test_rca_view_is_interactive(server):
     with SB() as sb:
         assert server.port
