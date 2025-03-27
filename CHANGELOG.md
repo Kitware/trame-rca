@@ -1,6 +1,22 @@
 # CHANGELOG
 
 
+## v2.0.0 (2025-03-27)
+
+### Bug Fixes
+
+- Turbo-jpeg fallback
+  ([`6b10a3b`](https://github.com/Kitware/trame-rca/commit/6b10a3b6668aa95170750f0eb0239ceec5240c07))
+
+- **api**: Add update method and fix tests
+  ([`7d4cb86`](https://github.com/Kitware/trame-rca/commit/7d4cb8657492def0c1b7a4f309fd020bbefa64e9))
+
+### Features
+
+- **api**: Big cleanup
+  ([`b0b509d`](https://github.com/Kitware/trame-rca/commit/b0b509d973a99ee681f431f53cbb0434d89a7af1))
+
+
 ## v1.3.1 (2025-03-26)
 
 ### Bug Fixes
