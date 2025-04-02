@@ -9,6 +9,7 @@ dependencies = [
     "trame-client>=3.4,<4",
     "wslink>=2.1.3",
     "numpy",
+    "packaging",
     "pillow",
     "pillow-avif-plugin"
 ]
