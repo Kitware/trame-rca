@@ -1,6 +1,17 @@
 # CHANGELOG
 
 
+## v2.0.2 (2025-04-02)
+
+### Bug Fixes
+
+- **ci**: Fix missing dependency
+  ([`5122a27`](https://github.com/Kitware/trame-rca/commit/5122a2782cb2d9988b6bd9224d45c14d1480265d))
+
+The `packaging` module was added in commit 263aad6c241d436dc2ec10a1ceb14a108d099a3c but it was
+  missing from the requirements of this package.
+
+
 ## v2.0.1 (2025-03-27)
 
 ### Bug Fixes
