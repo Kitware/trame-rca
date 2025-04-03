@@ -10,7 +10,6 @@ from trame.widgets import vuetify3 as v3
 
 # use this import path to allow -e install for dev
 from trame_rca.widgets import rca
-from trame_rca.utils import VtkRenderWindow
 
 import vtkmodules.vtkRenderingOpenGL2  # noqa
 from vtkmodules.vtkFiltersSources import vtkConeSource

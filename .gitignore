@@ -3,6 +3,7 @@ node_modules
 .venv
 build
 dist
+_vizdoom
 
 # local env files
 .env.local
@@ -16,6 +17,7 @@ pnpm-debug.log*
 
 # Editor directories and files
 .idea
+*.ini
 .vscode
 *.suo
 *.ntvs*
