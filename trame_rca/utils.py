@@ -37,13 +37,13 @@ def time_now_ms() -> int:
     return int(time.time_ns() / 1000000)
 
 
-def render_window_wrapper(render_window) -> AbstractRenderWindow:
-    if isinstance(render_window, AbstractRenderWindow):
-        return render_window
-    if isinstance(render_window, vtkRenderWindow):
-        return VtkRenderWindow(render_window)
+def window_wrapper(window: AbstractWindow | vtkRenderWindow) -> AbstractWindow:
+    if isinstance(window, AbstractWindow):
+        return window
+    if isinstance(window, vtkRenderWindow):
+        return VtkWindow(window)
     raise RuntimeError(
-        "Invalid render window object provided: expected an instance of AbstractRenderWindow"
+        "Invalid window object provided: expected an instance of AbstractWindow"
     )
 
 
@@ -73,22 +73,41 @@ class RcaEncoder(Enum):
         return self._impl(np_image, self.value, cols, rows, quality, now_ms)
 
 
-class AbstractRenderWindow(ABC):
+class AbstractWindow(ABC):
+    """
+    Abstract base class that wraps a remote window to interacts with the RCA.
+
+    Subclasses of `AbstractWindow` must implement the defined abstract methods
+    """
+
     @property
     @abstractmethod
     def img_cols_rows(self) -> tuple[NDArray, int, int]:
+        """
+        Returns a tuple containing the window as a numpy array,
+        the number of cols and the number of rows.
+        This method is called by the scheduler to render the window.
+        """
         pass
 
     @abstractmethod
     def process_resize_event(self, width: int, height: int) -> None:
+        """
+        Make the window process any resizing event on the RCA.
+        This method is called by the adapter when a resizing event happens.
+        """
         pass
 
     @abstractmethod
     def process_interaction_event(self, event: dict) -> None:
+        """
+        Make the window process any interaction event on the RCA.
+        This method is called by the adapter when an interaction event happens.
+        """
         pass
 
 
-class VtkRenderWindow(AbstractRenderWindow):
+class VtkWindow(AbstractWindow):
     def __init__(self, vtk_render_window: vtkRenderWindow):
         self._vtk_render_window = vtk_render_window
         self._window_to_image = vtkWindowToImageFilter()
@@ -145,7 +164,7 @@ class RcaRenderScheduler:
 
     def __init__(
         self,
-        render_window: AbstractRenderWindow | vtkRenderWindow,
+        window: AbstractWindow | vtkRenderWindow,
         *,
         push_callback: Optional[Callable[[bytes, dict], None]] = None,
         encode_pool: Executor = None,
@@ -154,7 +173,7 @@ class RcaRenderScheduler:
         still_quality: Optional[int] = None,
         rca_encoder: Optional[RcaEncoder | str] = None,
     ):
-        self._render_window = render_window_wrapper(render_window)
+        self._window = window_wrapper(window)
         self._rca_encoder = RcaEncoder(rca_encoder or RcaEncoder.JPEG)
         self._push_callback = push_callback
         self._target_fps = target_fps or 30.0
@@ -224,7 +243,7 @@ class RcaRenderScheduler:
     async def _render(self):
         while not self._is_closing:
             quality = await self._render_quality_queue.get()
-            np_img, cols, rows = self._render_window.img_cols_rows
+            np_img, cols, rows = self._window.img_cols_rows
             await self._push_queue.put(
                 asyncio.wrap_future(
                     self._encode_pool.submit(
@@ -249,21 +268,21 @@ class RcaRenderScheduler:
 class RcaViewAdapter:
     """
     Adapter for Remote Control Area.
-    Uses an RCA render scheduler to serialize render window to the RCA.
+    Uses an RCA render scheduler to serialize window to the RCA.
     """
 
     def __init__(
         self,
-        render_window: AbstractRenderWindow | vtkRenderWindow,
+        window: AbstractWindow | vtkRenderWindow,
         name: str,
         *,
         scheduler: RcaRenderScheduler = None,
         do_schedule_render_on_interaction=True,
     ):
-        self._render_window = render_window_wrapper(render_window)
+        self._window = window_wrapper(window)
         if scheduler is None:
             scheduler = RcaRenderScheduler(
-                self._render_window,
+                self._window,
                 target_fps=30,
                 rca_encoder="turbo-jpeg",  # will fallback to jpeg if turbo not available
                 encode_pool=ENCODING_POOL,
@@ -322,7 +341,7 @@ class RcaViewAdapter:
         self._current_size = (width, height, pixel_ratio)
         width = int(width * pixel_ratio * self._scale)
         height = int(height * pixel_ratio * self._scale)
-        self._render_window.process_resize_event(width, height)
+        self._window.process_resize_event(width, height)
         self._scheduler.schedule_render()
 
     def push(self, content, meta: dict):
@@ -356,7 +375,7 @@ class RcaViewAdapter:
     def on_interaction(self, _, event):
         if self.do_discard_extra_release_event(event):
             return
-        self._render_window.process_interaction_event(event)
+        self._window.process_interaction_event(event)
         if self._do_render_on_interaction:
             self._scheduler.schedule_render()
 

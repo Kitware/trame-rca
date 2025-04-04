@@ -6,7 +6,7 @@ from PIL import Image
 from trame.app.testing import enable_testing
 from trame.decorators import TrameApp, change
 from trame_rca.widgets import rca
-from trame_rca.utils import AbstractRenderWindow
+from trame_rca.utils import AbstractWindow
 from trame.app import get_server
 from trame.ui.vuetify3 import SinglePageLayout
 from trame.widgets import vuetify3 as v3
@@ -15,9 +15,9 @@ from trame.widgets import vuetify3 as v3
 DEFAULT_ROTATION_STEP = 45
 
 
-class ImageRenderWindow(AbstractRenderWindow):
+class RotatableImageWindow(AbstractWindow):
     def __init__(self, path):
-        self._image = Image.open(path)
+        self._image = Image.open(path).convert("RGB")
         self._image_angle = 0
         self._image_width, self._image_height = self._image.size
         self.rotation_step = DEFAULT_ROTATION_STEP
@@ -32,7 +32,6 @@ class ImageRenderWindow(AbstractRenderWindow):
     def img_cols_rows(self):
         np_image = asarray(self._updated_image)
         rows, cols, _ = np_image.shape
-        np_image = np_image[:, :, :3]  # Remove alpha
         return np_image, cols, rows
 
     def process_resize_event(self, width, height):
@@ -58,7 +57,7 @@ class VanillaApp:
     def __init__(self, server=None):
         self.server = get_server(server, client_type="vue3")
         image_path = Path(__file__).parent / "trame_logo.png"
-        self.render_window = ImageRenderWindow(image_path)
+        self.window = RotatableImageWindow(image_path)
         self._build_ui()
 
     @property
@@ -71,7 +70,7 @@ class VanillaApp:
 
     @change("rotation_step")
     def update_rotation_step(self, rotation_step, **kwargs):
-        self.render_window.rotation_step = rotation_step
+        self.window.rotation_step = rotation_step
 
     def reset_rotation_step(self):
         self.state.rotation_step = DEFAULT_ROTATION_STEP
@@ -109,7 +108,7 @@ class VanillaApp:
                     )
                     print(view.html)
                     self.view_handler = view.create_view_handler(
-                        self.render_window,
+                        self.window,
                     )
 
 
