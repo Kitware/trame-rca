@@ -74,17 +74,33 @@ class RcaEncoder(Enum):
 
 
 class AbstractRenderWindow(ABC):
+    """
+    Abstract base class that wraps a remote window to interacts with the RCA.
+
+    Subclasses of `AbstractRenderWindow` must implement the defined abstract methods
+    """
+
     @property
     @abstractmethod
     def img_cols_rows(self) -> tuple[NDArray, int, int]:
+        """
+        Returns a tuple containing the render window as a numpy array,
+        the number of cols and the number of rows.
+        """
         pass
 
     @abstractmethod
     def process_resize_event(self, width: int, height: int) -> None:
+        """
+        Make the render window process any resizing event on the RCA
+        """
         pass
 
     @abstractmethod
     def process_interaction_event(self, event: dict) -> None:
+        """
+        Make the render window process any interaction event on the RCA
+        """
         pass
 
 

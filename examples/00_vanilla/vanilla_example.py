@@ -16,8 +16,23 @@ DEFAULT_ROTATION_STEP = 45
 
 
 class ImageRenderWindow(AbstractRenderWindow):
+    """
+    A concrete implementation of AbstractRenderWindow.
+    In order to function correctly, the following abstract methods must be overridden:
+
+    1. ` img_cols_rows(self) -> tuple[NDArray, int, int]`
+       Returns a tuple containing the render window as a numpy array,
+       the number of cols and the number of rows.
+
+    2. `process_resize_event(self, width: int, height: int) -> None`
+       Make the render window process any resizing event on the RCA
+
+    3. `process_interaction_event(self, event: dict) -> None`
+       Make the render window process any interaction event on the RCA
+    """
+
     def __init__(self, path):
-        self._image = Image.open(path)
+        self._image = Image.open(path).convert("RGB")
         self._image_angle = 0
         self._image_width, self._image_height = self._image.size
         self.rotation_step = DEFAULT_ROTATION_STEP
@@ -32,7 +47,6 @@ class ImageRenderWindow(AbstractRenderWindow):
     def img_cols_rows(self):
         np_image = asarray(self._updated_image)
         rows, cols, _ = np_image.shape
-        np_image = np_image[:, :, :3]  # Remove alpha
         return np_image, cols, rows
 
     def process_resize_event(self, width, height):
