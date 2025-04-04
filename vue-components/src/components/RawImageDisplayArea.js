@@ -8,6 +8,10 @@ export default {
       type: String,
       default: 'anonymous',
     },
+    imageStyle: {
+      type: Object,
+      default: () => ({ width: '100%' }),
+    },
   },
   data() {
     return {
@@ -81,5 +85,6 @@ export default {
     this.cleanup();
   },
   inject: ['trame'],
-  template: '<canvas class="js-canvas" style="width: 100%;" v-show="hasContent"></canvas>',
+  template:
+    '<canvas class="js-canvas" :style="imageStyle" v-show="hasContent"></canvas>',
 };

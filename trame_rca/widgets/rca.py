@@ -33,12 +33,13 @@ class RemoteControlledArea(HtmlElement):
             "name",
             "origin",
             "display",
+            ("image_style", "imageStyle"),
             ("send_mouse_move", "sendMouseMove"),
         ]
         self._handlers = []
         self.ctrl.on_server_ready.add(self._on_ready)
 
-    def create_vtk_handler(
+    def create_view_handler(
         self,
         render_window,
         encoder=None,
@@ -74,6 +75,7 @@ class DisplayArea(HtmlElement):
             "name",
             "origin",
             "display",
+            ("image_style", "imageStyle"),
         ]
 
 
@@ -100,7 +102,12 @@ class ImageDisplayArea(HtmlElement):
             "image-display-area",
             **kwargs,
         )
-        self._attr_names += ["name", "origin", ("pool_size", "poolSize")]
+        self._attr_names += [
+            "name",
+            "origin",
+            ("pool_size", "poolSize"),
+            ("image_style", "imageStyle"),
+        ]
 
 
 class MediaSourceDisplayArea(HtmlElement):
@@ -136,4 +143,5 @@ class RawImageDisplayArea(HtmlElement):
         self._attr_names += [
             "name",
             "origin",
+            ("image_style", "imageStyle"),
         ]

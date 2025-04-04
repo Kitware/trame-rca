@@ -6,7 +6,7 @@ TO_IMAGE_TYPE = {
     "webp": "image/webp",
 }
 
-TO_IMAGE_FOMAT = {
+TO_IMAGE_FORMAT = {
     "avif": "avif",
     "jpeg": "jpeg",
     "turbo-jpeg": "jpeg",

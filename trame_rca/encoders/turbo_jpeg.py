@@ -41,8 +41,6 @@ def encode_np_img_to_bytes(
         return b""
 
     # t0 = time.time()
-    image = image.reshape((cols, rows, -1))
-    image = image[::-1, :, :]
     result = jpeg.encode(image, quality=quality, pixel_format=TJPF_RGB)
     # t1 = time.time()
     # print(f"tubo-jpeg encode {t1-t0:.04f}s")
