@@ -7,6 +7,6 @@ pytest-asyncio
 pytest-xprocess
 seleniumbase
 trame-server>=3
-trame-vuetify
+trame-vuetify<3
 trame>=3.6
 vtk
