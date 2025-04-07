@@ -1,5 +1,3 @@
-# Required for rendering initialization, not necessary for
-# local rendering, but doesn't hurt to include it
 from numpy import asarray
 from pathlib import Path
 from PIL import Image
@@ -10,6 +8,7 @@ from trame_rca.utils import AbstractWindow
 from trame.app import get_server
 from trame.ui.vuetify3 import SinglePageLayout
 from trame.widgets import vuetify3 as v3
+from trame_client.module.vue3 import www
 
 
 DEFAULT_ROTATION_STEP = 45
@@ -56,7 +55,7 @@ class RotatableImageWindow(AbstractWindow):
 class VanillaApp:
     def __init__(self, server=None):
         self.server = get_server(server, client_type="vue3")
-        image_path = Path(__file__).parent / "trame_logo.png"
+        image_path = Path(www) / "logo.png"
         self.window = RotatableImageWindow(image_path)
         self._build_ui()
 
@@ -106,7 +105,6 @@ class VanillaApp:
                         display="image",
                         image_style=({},),  # restore default style with width: 100%
                     )
-                    print(view.html)
                     self.view_handler = view.create_view_handler(
                         self.window,
                     )

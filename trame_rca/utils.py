@@ -75,34 +75,42 @@ class RcaEncoder(Enum):
 
 class AbstractWindow(ABC):
     """
-    Abstract base class that wraps a remote window to interacts with the RCA.
+    Abstract base class for interacting with a remote window through the RCA.
 
-    Subclasses of `AbstractWindow` must implement the defined abstract methods
+    Subclasses must implement the abstract methods defined in this class
+    to enable interaction with the window.
     """
 
     @property
     @abstractmethod
     def img_cols_rows(self) -> tuple[NDArray, int, int]:
         """
-        Returns a tuple containing the window as a numpy array,
-        the number of cols and the number of rows.
-        This method is called by the scheduler to render the window.
+        Returns a tuple containing:
+        - the window content as a NumPy array,
+        - the number of columns,
+        - and the number of rows.
+
+        Called by the scheduler to render the current window view.
         """
         pass
 
     @abstractmethod
     def process_resize_event(self, width: int, height: int) -> None:
         """
-        Make the window process any resizing event on the RCA.
-        This method is called by the adapter when a resizing event happens.
+        Handle a resize event for the RCA (RenderWindowInteractor).
+
+        This method is triggered by the adapter whenever the window is resized.
         """
         pass
 
     @abstractmethod
     def process_interaction_event(self, event: dict) -> None:
         """
-        Make the window process any interaction event on the RCA.
-        This method is called by the adapter when an interaction event happens.
+        Handle an interaction event from the RCA (RenderWindowInteractor).
+
+        This method is invoked by the adapter whenever an interaction event occurs.
+        Refer to the event types defined in:
+        https://github.com/Kitware/vtk-js/blob/master/Sources/Rendering/Core/RenderWindowInteractor/index.js
         """
         pass
 
@@ -334,7 +342,7 @@ class RcaViewAdapter:
         self.streamer = stream_manager
 
     def update_size(self, origin, size):
-        # Resize to one pixel min to avoid rendering problems
+        # Resize to ten pixel min to avoid rendering problems
         width = max(10, int(size.get("w", 300)))
         height = max(10, int(size.get("h", 300)))
         pixel_ratio = size.get("p", 1)
