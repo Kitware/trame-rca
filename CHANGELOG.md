@@ -1,6 +1,24 @@
 # CHANGELOG
 
 
+## v2.1.0 (2025-04-16)
+
+### Bug Fixes
+
+- **tests**: Adapt test to match the refacto
+  ([`e57fb87`](https://github.com/Kitware/trame-rca/commit/e57fb87bdd1e34684d9867f652c13c9d0e9d6772))
+
+### Documentation
+
+- Document abstract class
+  ([`b078ff9`](https://github.com/Kitware/trame-rca/commit/b078ff9e40ef97b1decb7c307383956e461aad71))
+
+### Features
+
+- **vanilla-example**: Add vanilla example without vtk
+  ([`ce9af29`](https://github.com/Kitware/trame-rca/commit/ce9af29da80b03148fee41d37a17c72c3a66b2bc))
+
+
 ## v2.0.2 (2025-04-02)
 
 ### Bug Fixes
