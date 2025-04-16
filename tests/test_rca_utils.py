@@ -13,7 +13,7 @@ from PIL import Image
 from trame_rca.utils import (
     RcaEncoder,
     RcaRenderScheduler,
-    VtkImageExtract,
+    VtkWindow,
     time_now_ms,
 )
 
@@ -23,6 +23,7 @@ from vtkmodules.vtkRenderingCore import (
     vtkRenderWindow,
     vtkPolyDataMapper,
     vtkActor,
+    vtkRenderWindowInteractor,
 )
 
 
@@ -39,6 +40,9 @@ def a_threed_view():
     render_window = vtkRenderWindow()
     render_window.AddRenderer(renderer)
 
+    renderWindowInteractor = vtkRenderWindowInteractor()
+    renderWindowInteractor.SetRenderWindow(render_window)
+
     cone_source = vtkConeSource()
     mapper = vtkPolyDataMapper()
     mapper.SetInputConnection(cone_source.GetOutputPort())
@@ -53,7 +57,7 @@ def a_threed_view():
 @pytest.mark.parametrize("img_format", ["jpeg", "png", "avif", "webp"])
 def test_a_view_can_be_encoded_to_format(a_threed_view, tmpdir, img_format):
     img, *_ = RcaEncoder(img_format).encode(
-        *VtkImageExtract(a_threed_view).img_cols_rows, 100
+        *VtkWindow(a_threed_view).img_cols_rows, 100
     )
     dest_file = Path(tmpdir) / f"test_img.{img_format}"
     dest_file.write_bytes(img)
@@ -66,7 +70,7 @@ def test_a_view_can_be_encoded_to_format(a_threed_view, tmpdir, img_format):
 @pytest.mark.parametrize("img_format", ["jpeg", "png", "avif", "webp"])
 def test_np_encode_can_be_done_using_multiprocess(a_threed_view, img_format):
     encoder = RcaEncoder(img_format)
-    array, cols, rows = VtkImageExtract(a_threed_view).img_cols_rows
+    array, cols, rows = VtkWindow(a_threed_view).img_cols_rows
     now_ms = time_now_ms()
 
     with Pool(1) as p:
@@ -179,7 +183,7 @@ async def test_groups_close_request_render_together(
         await scheduler.close()
 
 
-@pytest.mark.parametrize("server_path", ["examples/vtk_cone_simple.py"])
+@pytest.mark.parametrize("server_path", ["examples/01_vtk/vtk_cone_simple.py"])
 def test_rca_view_is_interactive(server):
     with SB() as sb:
         assert server.port

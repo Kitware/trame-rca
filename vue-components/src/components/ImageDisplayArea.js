@@ -33,6 +33,10 @@ export default {
       type: Number,
       default: 4,
     },
+    imageStyle: {
+      type: Object,
+      default: () => ({ width: '100%' }),
+    },
   },
   watch: {
     poolSize() {
@@ -113,5 +117,5 @@ export default {
     this.cleanup();
   },
   inject: ['trame'],
-  template: `<img style="width: 100%" :src="displayURL" v-show="hasContent" />`,
+  template: `<img :style="imageStyle" :src="displayURL" v-show="hasContent" />`,
 };
