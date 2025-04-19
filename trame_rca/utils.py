@@ -139,7 +139,7 @@ class VtkWindow(AbstractWindow):
         scalars = image_data.GetPointData().GetScalars()
         np_image = vtk_to_numpy(scalars)
         np_image = np_image.reshape((cols, rows, -1))
-        np_image = np_image[:, :, ::-1]
+        np_image = np_image[::-1, :, :]
         return np_image, cols, rows
 
     def process_resize_event(self, width, height):
