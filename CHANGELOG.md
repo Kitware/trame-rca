@@ -1,6 +1,16 @@
 # CHANGELOG
 
 
+## v2.1.1 (2025-04-23)
+
+### Bug Fixes
+
+- **VtkWindow**: Fix flip and color inversion
+  ([`3597106`](https://github.com/Kitware/trame-rca/commit/3597106b16e2cb5a3d700e70a8ed2b6eb6faecf1))
+
+* Fix VtkWindow np image reshape which would produce flipped and blue rendering
+
+
 ## v2.1.0 (2025-04-16)
 
 ### Bug Fixes
