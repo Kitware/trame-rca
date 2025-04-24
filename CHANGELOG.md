@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v2.1.2 (2025-04-24)
+
+### Bug Fixes
+
+- **widget**: Add alias with warning to avoid breaking change
+  ([`7dd242e`](https://github.com/Kitware/trame-rca/commit/7dd242e061c838a679005a931ecad48897d2b45d))
+
+
 ## v2.1.1 (2025-04-23)
 
 ### Bug Fixes
