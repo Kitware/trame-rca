@@ -2,6 +2,7 @@
 
 from trame_client.widgets.core import AbstractElement
 from trame_rca.utils import RcaViewAdapter, RcaRenderScheduler
+import warnings
 from .. import module
 
 __all__ = [
@@ -59,6 +60,24 @@ class RemoteControlledArea(HtmlElement):
         view_handler = RcaViewAdapter(render_window, self.name, scheduler=scheduler)
         self._handlers.append(view_handler)
         return view_handler
+
+    def create_vtk_handler(
+        self,
+        render_window,
+        encoder=None,
+        target_fps=30,
+        interactive_quality=60,
+        still_quality=90,
+    ):
+        warnings.warn(
+            "'create_vtk_handler' will be deprecated in a future version. "
+            "Please use 'create_view_handler' instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.create_view_handler(
+            render_window, encoder, target_fps, interactive_quality, still_quality
+        )
 
     def _on_ready(self, **_):
         for handler in self._handlers:
