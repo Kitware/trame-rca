@@ -1,6 +1,16 @@
 # CHANGELOG
 
 
+## v2.1.3 (2025-06-13)
+
+### Bug Fixes
+
+- **VtkWindow**: Fix performances during image flip
+  ([`3284978`](https://github.com/Kitware/trame-rca/commit/328497890cb8651d8cdb5114faa7d87f17b5b92e))
+
+- Remove array allocation during image flip
+
+
 ## v2.1.2 (2025-04-24)
 
 ### Bug Fixes
