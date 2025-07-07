@@ -4,7 +4,6 @@ from PIL import Image
 from trame.app.testing import enable_testing
 from trame.decorators import TrameApp, change
 from trame_rca.widgets import rca
-from trame_rca.utils import AbstractWindow
 from trame.app import get_server
 from trame.ui.vuetify3 import SinglePageLayout
 from trame.widgets import vuetify3 as v3
@@ -14,7 +13,7 @@ from trame_client.module.vue3 import www
 DEFAULT_ROTATION_STEP = 45
 
 
-class RotatableImageWindow(AbstractWindow):
+class RotatableImageWindow:
     def __init__(self, path):
         self._image = Image.open(path).convert("RGB")
         self._image_angle = 0

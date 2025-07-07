@@ -3,23 +3,25 @@ from __future__ import annotations
 import os
 import asyncio
 import time
-from abc import ABC, abstractmethod
 from asyncio import Queue
 from concurrent.futures.thread import ThreadPoolExecutor
 from concurrent.futures import Executor
 from enum import Enum
-from packaging.version import Version
-from typing import Callable, Optional
+from typing import Callable, Optional, TYPE_CHECKING
 
 from numpy.typing import NDArray
 from trame.app import asynchronous
-from vtkmodules.util.numpy_support import vtk_to_numpy
-from vtkmodules.vtkRenderingCore import vtkRenderWindow, vtkWindowToImageFilter
-import json
 from trame_rca.encoders.pil import encode as encode_pil
 
-from vtkmodules.vtkCommonCore import vtkCommand, vtkVersion
-from vtkmodules.vtkWebCore import vtkRemoteInteractionAdapter
+if TYPE_CHECKING:
+    from vtkmodules.vtkRenderingCore import vtkRenderWindow
+
+from trame_rca.protocol import AbstractWindow
+
+try:
+    from trame_rca.vtk_utils import VtkWindow
+except ModuleNotFoundError as e:
+    print(e.msg)
 
 try:
     from trame_rca.encoders.turbo_jpeg import encode as encode_turbo
@@ -32,6 +34,14 @@ except ModuleNotFoundError:
 
 ENCODING_POOL = ThreadPoolExecutor(max(4, os.cpu_count()))
 
+__all__ = [
+    "AbstractWindow",
+    "RcaEncoder",
+    "RcaViewAdapter",
+    "RcaRenderScheduler",
+    "VtkWindow",
+]
+
 
 def time_now_ms() -> int:
     return int(time.time_ns() / 1000000)
@@ -40,8 +50,12 @@ def time_now_ms() -> int:
 def window_wrapper(window: AbstractWindow | vtkRenderWindow) -> AbstractWindow:
     if isinstance(window, AbstractWindow):
         return window
+
+    from vtkmodules.vtkRenderingCore import vtkRenderWindow
+
     if isinstance(window, vtkRenderWindow):
         return VtkWindow(window)
+
     raise RuntimeError(
         "Invalid window object provided: expected an instance of AbstractWindow"
     )
@@ -71,89 +85,6 @@ class RcaEncoder(Enum):
     ) -> tuple[bytes, dict, int]:
         now_ms = time_now_ms()
         return self._impl(np_image, self.value, cols, rows, quality, now_ms)
-
-
-class AbstractWindow(ABC):
-    """
-    Abstract base class for interacting with a remote window through the RCA.
-
-    Subclasses must implement the abstract methods defined in this class
-    to enable interaction with the window.
-    """
-
-    @property
-    @abstractmethod
-    def img_cols_rows(self) -> tuple[NDArray, int, int]:
-        """
-        Returns a tuple containing:
-        - the window content as a NumPy array,
-        - the number of columns,
-        - and the number of rows.
-
-        Called by the scheduler to render the current window view.
-        """
-        pass
-
-    @abstractmethod
-    def process_resize_event(self, width: int, height: int) -> None:
-        """
-        Handle a resize event for the RCA (RenderWindowInteractor).
-
-        This method is triggered by the adapter whenever the window is resized.
-        """
-        pass
-
-    @abstractmethod
-    def process_interaction_event(self, event: dict) -> None:
-        """
-        Handle an interaction event from the RCA (RenderWindowInteractor).
-
-        This method is invoked by the adapter whenever an interaction event occurs.
-        Refer to the event types defined in:
-        https://github.com/Kitware/vtk-js/blob/master/Sources/Rendering/Core/RenderWindowInteractor/index.js
-        """
-        pass
-
-
-class VtkWindow(AbstractWindow):
-    def __init__(self, vtk_render_window: vtkRenderWindow):
-        self._vtk_render_window = vtk_render_window
-        self._window_to_image = vtkWindowToImageFilter()
-        self._window_to_image.SetInput(vtk_render_window)
-        self._window_to_image.SetScale(1)
-        self._window_to_image.ReadFrontBufferOff()
-        self._window_to_image.ShouldRerenderOff()
-        self._window_to_image.FixBoundaryOn()
-        self._iren = self._vtk_render_window.GetInteractor()
-        self._iren.EnableRenderOff()
-        self._vtk_render_window.ShowWindowOff()
-
-    @property
-    def img_cols_rows(self):
-        self._vtk_render_window.Render()
-        self._window_to_image.Modified()
-        self._window_to_image.Update()
-
-        image_data = self._window_to_image.GetOutput()
-        rows, cols, _ = image_data.GetDimensions()
-        scalars = image_data.GetPointData().GetScalars()
-        np_image = vtk_to_numpy(scalars)
-        np_image = np_image.reshape((cols, rows, -1))
-        np_image[:] = np_image[::-1, :, :]
-        return np_image, cols, rows
-
-    def process_resize_event(self, width, height):
-        self._iren.UpdateSize(width, height)
-
-        if Version(vtkVersion().vtk_version) < Version("9.5"):
-            self._iren.InvokeEvent(vtkCommand.WindowResizeEvent)
-
-    def process_interaction_event(self, event):
-        event_type = event["type"]
-        if event_type in ["StartInteractionEvent", "EndInteractionEvent"]:
-            return
-
-        vtkRemoteInteractionAdapter.ProcessEvent(self._iren, json.dumps(event))
 
 
 class RcaRenderScheduler:
