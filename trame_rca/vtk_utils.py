@@ -1,5 +1,6 @@
 import json
 from packaging.version import Version
+import vtkmodules.vtkRenderingOpenGL2  # noqa
 from vtkmodules.util.numpy_support import vtk_to_numpy
 from vtkmodules.vtkCommonCore import vtkCommand, vtkVersion
 from vtkmodules.vtkRenderingCore import vtkRenderWindow, vtkWindowToImageFilter
