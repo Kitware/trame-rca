@@ -10,7 +10,8 @@
   },
   "scripts": {
     "build": "vite build --emptyOutDir",
-    "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs --fix --ignore-path .gitignore --ignore-pattern public"
+    "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs --fix --ignore-path .gitignore --ignore-pattern public",
+    "test": "vitest"
   },
   "devDependencies": {
     "@rushstack/eslint-patch": "^1.1.4",
@@ -20,6 +21,7 @@
     "prettier": "^2.7.1",
     "semantic-release": "19.0.2",
     "vite": "^4.1.0",
+    "vitest": "^1.0.0",
     "vue": "^3.0.0"
   },
   "files": [

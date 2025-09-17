@@ -36,6 +36,7 @@ class RemoteControlledArea(HtmlElement):
             "display",
             ("image_style", "imageStyle"),
             ("send_mouse_move", "sendMouseMove"),
+            ("event_throttle_ms", "eventThrottleMs"),
         ]
         self._handlers = []
         self.ctrl.on_server_ready.add(self._on_ready)
