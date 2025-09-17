@@ -1,6 +1,8 @@
 import vtkRenderWindowInteractor from '@kitware/vtk.js/Rendering/Core/RenderWindowInteractor';
 import vtkInteractorStyleRemoteMouse from '../utils/interactorStyle';
+
 const { inject, provide, ref, toRefs, onMounted, onBeforeUnmount } = window.Vue;
+import { EventThrottle } from '../utils/EventThrottle';
 
 const RESOLVED_PROMISED = Promise.resolve(true);
 
@@ -22,6 +24,10 @@ export default {
       type: Boolean,
       default: false,
     },
+    eventThrottleMs: {
+      type: Number,
+      default: 25,
+    },
     imageStyle: {
       type: Object,
       default: () => ({ width: '100%' }),
@@ -29,13 +35,17 @@ export default {
   },
   setup(props) {
     const rootElem = ref(null);
-    const pendingEventPromise = ref(RESOLVED_PROMISED);
     const trame = inject('trame');
 
+    // Event throttle
+    const throttle = new EventThrottle((event) => {
+      return trame.client
+        .getConnection()
+        .getSession()
+        .call('trame.rca.event', [props.name, props.origin, event]);
+    }, props.eventThrottleMs);
+
     // Mouse management
-    let readyEventUpdate = true;
-    let lastEvent = null;
-    let pendingEventUpdateCount = 0;
     let currentOffset = [0, 0];
 
     // Size management
@@ -55,6 +65,7 @@ export default {
         z: 0,
       };
     }
+
     const windowInteractor = vtkRenderWindowInteractor.newInstance({
       _getScreenEventPositionFor,
       currentRenderer: 1,
@@ -111,34 +122,7 @@ export default {
 
     function sendEvent(event) {
       if (trame) {
-        if (readyEventUpdate) {
-          readyEventUpdate = false;
-          lastEvent = event;
-          pendingEventPromise.value = trame.client
-            .getConnection()
-            .getSession()
-            .call('trame.rca.event', [props.name, props.origin, lastEvent]);
-          pendingSizeUpdatePromise.finally(finallyEventUpdate);
-        } else if (lastEvent.type !== event.type) {
-          pendingEventUpdateCount = 0;
-          trame.client
-            .getConnection()
-            .getSession()
-            .call('trame.rca.event', [props.name, props.origin, lastEvent]);
-          trame.client
-            .getConnection()
-            .getSession()
-            .call('trame.rca.event', [props.name, props.origin, event]);
-          lastEvent = event;
-        }
-      }
-    }
-
-    function finallyEventUpdate() {
-      readyEventUpdate = true;
-      if (pendingEventUpdateCount) {
-        pendingEventUpdateCount = 0;
-        sendEvent(lastEvent);
+        throttle.sendEvent(event);
       }
     }
 

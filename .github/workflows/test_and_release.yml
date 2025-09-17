@@ -79,6 +79,29 @@ jobs:
       env:
         CI: true
 
+  vitest:
+    name: Vitest (Vue Unit Tests)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set Up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Install Dependencies
+        run: |
+          cd vue-components
+          npm install
+
+      - name: Run Vitest
+        run: |
+          cd vue-components
+          npm run test
+
   test-npm-build:
     runs-on: ubuntu-latest
 
@@ -101,6 +124,7 @@ jobs:
     needs: [
       pre-commit,
       pytest,
+      vitest,
       test-npm-build,
     ]
     runs-on: ubuntu-latest
