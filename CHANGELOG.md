@@ -1,6 +1,17 @@
 # CHANGELOG
 
 
+## v2.1.4 (2025-09-18)
+
+### Bug Fixes
+
+- **utils**: Do not import vtk unnecessarily
+  ([`f6c164a`](https://github.com/Kitware/trame-rca/commit/f6c164a29c51bde3bae3c1a947f59c47b2216699))
+
+- **vtk**: Add OpenGL2 import to ensure correct factory registration with VTK 9.5
+  ([`dba8237`](https://github.com/Kitware/trame-rca/commit/dba8237acdcad551bbe294c7690a413bec6e9d04))
+
+
 ## v2.1.3 (2025-06-13)
 
 ### Bug Fixes
