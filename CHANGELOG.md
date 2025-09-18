@@ -1,6 +1,16 @@
 # CHANGELOG
 
 
+## v2.2.0 (2025-09-18)
+
+### Features
+
+- **events**: Add event throttle
+  ([`7c7268b`](https://github.com/Kitware/trame-rca/commit/7c7268b18c62e772be10b51b2e06363e9db2728f))
+
+- Add event throttle and compression to handle unresponsive server during interaction.
+
+
 ## v2.1.4 (2025-09-18)
 
 ### Bug Fixes
