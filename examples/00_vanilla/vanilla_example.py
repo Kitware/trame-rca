@@ -1,10 +1,10 @@
 from numpy import asarray
 from pathlib import Path
 from PIL import Image
+from trame.app import TrameApp
 from trame.app.testing import enable_testing
-from trame.decorators import TrameApp, change
+from trame.decorators import change
 from trame_rca.widgets import rca
-from trame.app import get_server
 from trame.ui.vuetify3 import SinglePageLayout
 from trame.widgets import vuetify3 as v3
 from trame_client.module.vue3 import www
@@ -50,21 +50,12 @@ class RotatableImageWindow:
                 self._image_angle += spin * self.rotation_step
 
 
-@TrameApp()
-class VanillaApp:
+class VanillaApp(TrameApp):
     def __init__(self, server=None):
-        self.server = get_server(server, client_type="vue3")
+        super().__init__(server)
         image_path = Path(www) / "logo.png"
         self.window = RotatableImageWindow(image_path)
         self._build_ui()
-
-    @property
-    def state(self):
-        return self.server.state
-
-    @property
-    def ctrl(self):
-        return self.server.controller
 
     @change("rotation_step")
     def update_rotation_step(self, rotation_step, **kwargs):
@@ -100,7 +91,6 @@ class VanillaApp:
                     classes="pa-0 fill-height position-relative",
                 ):
                     view = rca.RemoteControlledArea(
-                        name="view",
                         display="image",
                         image_style=({},),  # restore default style with width: 100%
                     )

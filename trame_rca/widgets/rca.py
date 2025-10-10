@@ -25,11 +25,14 @@ class HtmlElement(AbstractElement):
 
 # Expose your vue component(s)
 class RemoteControlledArea(HtmlElement):
+    _next_id = 0
+
     def __init__(self, **kwargs):
         super().__init__(
             "remote-controlled-area",
             **kwargs,
         )
+        RemoteControlledArea._next_id += 1
         self._attr_names += [
             "name",
             "origin",
@@ -38,8 +41,18 @@ class RemoteControlledArea(HtmlElement):
             ("send_mouse_move", "sendMouseMove"),
             ("event_throttle_ms", "eventThrottleMs"),
         ]
+
+        self.name = kwargs.get("name") or f"trame_rca_{RemoteControlledArea._next_id}"
         self._handlers = []
         self.ctrl.on_server_ready.add(self._on_ready)
+
+    def add_view_handler(self, view_handler):
+        if view_handler in self._handlers:
+            return
+
+        self._handlers.append(view_handler)
+        if self.server.running:
+            self.server.root_server.controller.rc_area_register(view_handler)
 
     def create_view_handler(
         self,
@@ -59,7 +72,7 @@ class RemoteControlledArea(HtmlElement):
                 rca_encoder=encoder,
             )
         view_handler = RcaViewAdapter(render_window, self.name, scheduler=scheduler)
-        self._handlers.append(view_handler)
+        self.add_view_handler(view_handler)
         return view_handler
 
     def create_vtk_handler(
@@ -82,7 +95,7 @@ class RemoteControlledArea(HtmlElement):
 
     def _on_ready(self, **_):
         for handler in self._handlers:
-            self.server.controller.rc_area_register(handler)
+            self.server.root_server.controller.rc_area_register(handler)
 
 
 class DisplayArea(HtmlElement):

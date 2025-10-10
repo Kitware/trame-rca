@@ -4,9 +4,9 @@ import time
 import json
 import asyncio
 
-from trame.app import get_server, asynchronous
+from trame.app import TrameApp, asynchronous
 from trame.app.testing import enable_testing
-from trame.decorators import TrameApp, change, life_cycle
+from trame.decorators import change
 from trame.ui.vuetify3 import SinglePageLayout
 from trame.widgets import vuetify3 as v3
 
@@ -137,22 +137,12 @@ class ViewAdapter:
             vtkRemoteInteractionAdapter.ProcessEvent(self._iren, event_str)
 
 
-@TrameApp()
-class ConeApp:
+class ConeApp(TrameApp):
     def __init__(self, server=None):
-        self.server = get_server(server, client_type="vue3")
+        super().__init__(server)
 
         self.render_window, self.cone_source = self.setup_vtk()
-        self.view_handler = ViewAdapter(self.render_window, "view")
         self.build_ui()
-
-    @property
-    def state(self):
-        return self.server.state
-
-    @property
-    def ctrl(self):
-        return self.server.controller
 
     def setup_vtk(self):
         renderer = vtkRenderer()
@@ -197,13 +187,14 @@ class ConeApp:
                     fluid=True,
                     classes="pa-0 fill-height position-relative",
                 ):
-                    rca.RemoteControlledArea(
-                        name="view",
+                    view = rca.RemoteControlledArea(
                         display="raw-image",
                     )
+                    self.view_handler = ViewAdapter(self.render_window, view.name)
+                    view.add_view_handler(self.view_handler)
                     with v3.VCard(classes="pa-4 ma-0", style=STATS_STYLES):
                         rca.StatisticsDisplay(
-                            name="view",
+                            name=view.name,
                             fps_delta=1.5,
                             stat_window_size=10,
                             history_window_size=30,
@@ -214,11 +205,6 @@ class ConeApp:
     def update_cone(self, resolution, **kwargs):
         self.cone_source.SetResolution(resolution)
         self.view_handler.render()
-
-    @life_cycle.server_ready
-    def on_server_ready(self, **_):
-        # can only be called when server is ready
-        self.ctrl.rc_area_register(self.view_handler)
 
     def update_reset_resolution(self):
         self.state.resolution = DEFAULT_RESOLUTION
