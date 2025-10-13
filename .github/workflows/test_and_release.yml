@@ -75,6 +75,8 @@ jobs:
       run: |
         pip install ".[turbo]"
         pip install -r tests/requirements.txt
+        # Install requirements for playwright
+        playwright install
         pytest -s ./tests
       env:
         CI: true

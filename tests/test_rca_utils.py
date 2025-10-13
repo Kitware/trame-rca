@@ -5,8 +5,7 @@ from multiprocessing import Pool
 from pathlib import Path
 from unittest.mock import MagicMock
 
-from selenium.webdriver import ActionChains
-from seleniumbase import SB
+from playwright.sync_api import expect, sync_playwright
 
 import pytest
 from PIL import Image
@@ -185,22 +184,26 @@ async def test_groups_close_request_render_together(
 
 @pytest.mark.parametrize("server_path", ["examples/01_vtk/vtk_cone_simple.py"])
 def test_rca_view_is_interactive(server):
-    with SB() as sb:
-        assert server.port
-
+    with sync_playwright() as p:
         url = f"http://127.0.0.1:{server.port}/"
-        sb.open(url)
+        browser = p.chromium.launch()
+        page = browser.new_page()
+        page.goto(url)
 
-        element = sb.find_element("img")
+        element = page.locator("img")
+        expect(element).to_be_visible()
         initial_img_url = element.get_attribute("src")
 
-        ActionChains(sb.driver).move_to_element(element).perform()
-        ActionChains(sb.driver).click_and_hold(element).move_by_offset(
-            100, 0
-        ).release().perform()
+        box = element.bounding_box()
+        assert box is not None
 
-        # Expect image to have been updated following user action
+        page.mouse.move(box["x"] + box["width"] / 2, box["y"] + box["height"] / 2)
+        page.mouse.down()
+        page.mouse.move(box["x"] + box["width"] / 2 + 100, box["y"] + box["height"] / 2)
+        page.mouse.up()
+        page.wait_for_timeout(100)
         new_img_url = element.get_attribute("src")
+
         assert initial_img_url != new_img_url
 
 
