@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v2.2.1 (2025-10-14)
+
+### Bug Fixes
+
+- Use root server controller to call rc_area_register
+  ([`4d535e7`](https://github.com/Kitware/trame-rca/commit/4d535e7dafec97da17ddc87155824406b7ff70ea))
+
+
 ## v2.2.0 (2025-09-18)
 
 ### Features
