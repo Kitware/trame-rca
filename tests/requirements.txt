@@ -4,8 +4,8 @@ pillow-avif-plugin
 pixelmatch
 pytest
 pytest-asyncio
+pytest-playwright
 pytest-xprocess
-seleniumbase
 trame-server>=3
 trame-vuetify
 trame>=3.6

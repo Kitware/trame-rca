@@ -2,9 +2,9 @@
 # local rendering, but doesn't hurt to include it
 import asyncio
 
-from trame.app import get_server, asynchronous
+from trame.app import TrameApp, asynchronous
 from trame.app.testing import enable_testing
-from trame.decorators import TrameApp, change, life_cycle
+from trame.decorators import change, life_cycle
 from trame.ui.vuetify3 import SinglePageLayout
 from trame.widgets import vuetify3 as v3
 
@@ -37,26 +37,16 @@ STATS_STYLES = """
 """
 
 
-@TrameApp()
-class ConeApp:
+class ConeApp(TrameApp):
     def __init__(self, server=None):
-        self.server = get_server(server, client_type="vue3")
+        super().__init__(server)
 
         self.server.cli.add_argument("--encoder", default="jpeg")
         args, _ = self.server.cli.parse_known_args()
         self.state.encoder = args.encoder
 
-        self.view_handler = None
         self.render_window, self.cone_source = self.setup_vtk()
         self.build_ui()
-
-    @property
-    def state(self):
-        return self.server.state
-
-    @property
-    def ctrl(self):
-        return self.server.controller
 
     def setup_vtk(self):
         renderer = vtkRenderer()
@@ -133,7 +123,6 @@ class ConeApp:
                     classes="pa-0 fill-height position-relative",
                 ):
                     view = rca.RemoteControlledArea(
-                        name="view",
                         display="image",
                     )
                     self.view_handler = view.create_view_handler(
@@ -142,7 +131,7 @@ class ConeApp:
                     )
                     with v3.VCard(classes="pa-4 ma-0", style=STATS_STYLES):
                         rca.StatisticsDisplay(
-                            name="view",
+                            name=view.name,
                             fps_delta=1.5,
                             stat_window_size=10,
                             history_window_size=30,
