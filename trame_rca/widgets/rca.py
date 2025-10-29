@@ -50,9 +50,10 @@ class RemoteControlledArea(HtmlElement):
         if view_handler in self._handlers:
             return
 
-        self._handlers.append(view_handler)
         if self.server.running:
             self.server.root_server.controller.rc_area_register(view_handler)
+        else:
+            self._handlers.append(view_handler)
 
     def create_view_handler(
         self,
@@ -94,7 +95,8 @@ class RemoteControlledArea(HtmlElement):
         )
 
     def _on_ready(self, **_):
-        for handler in self._handlers:
+        while self._handlers:
+            handler = self._handlers.pop()
             self.server.root_server.controller.rc_area_register(handler)
 
 

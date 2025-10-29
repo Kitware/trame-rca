@@ -326,3 +326,6 @@ class RcaViewAdapter:
 
     def update(self):
         self.schedule_render()
+
+    async def close(self):
+        await self._scheduler.close()
