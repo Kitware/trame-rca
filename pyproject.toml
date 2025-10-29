@@ -1,6 +1,6 @@
 [project]
 name = "trame-rca"
-version = "2.2.1"
+version = "2.2.2"
 description = "Remote Controlled Area widget for trame"
 authors = [
     {name = "Kitware Inc."},

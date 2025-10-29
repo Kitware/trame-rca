@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v2.2.2 (2025-10-29)
+
+### Bug Fixes
+
+- **leak**: Allow user to properly unregister handler and free memory
+  ([`b32d664`](https://github.com/Kitware/trame-rca/commit/b32d664f3ffac33df74a88e6fd29eccc0f96518a))
+
+
 ## v2.2.1 (2025-10-14)
 
 ### Bug Fixes
