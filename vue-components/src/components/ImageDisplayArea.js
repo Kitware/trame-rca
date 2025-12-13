@@ -117,5 +117,5 @@ export default {
     this.cleanup();
   },
   inject: ['trame'],
-  template: `<img :style="imageStyle" :src="displayURL" v-show="hasContent" />`,
+  template: `<img :style="imageStyle" :src="displayURL" v-show="hasContent" draggable="false" />`,
 };

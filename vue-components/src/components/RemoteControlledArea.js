@@ -58,7 +58,6 @@ export default {
     // VTK input handling
     // -----------------------------------------------------------------------
     function _getScreenEventPositionFor(source) {
-      source.preventDefault(); // Do we need that?
       return {
         x: source.clientX - currentOffset[0],
         y: currentSizeUpdateEvent.h - source.clientY + currentOffset[1],
