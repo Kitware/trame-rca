@@ -1,6 +1,21 @@
 # CHANGELOG
 
 
+## v2.2.3 (2025-12-13)
+
+### Bug Fixes
+
+- **events**: Prevent VTK.js from eating keyboard events
+  ([`7fec97a`](https://github.com/Kitware/trame-rca/commit/7fec97a64c35e94c05d2a5b854ea360d898bafe3))
+
+See https://github.com/Kitware/vtk-js/pull/3239 preventDefault() must be removed because it was
+  preventing the render window HTML element from getting the focus on mouse click. draggable="false"
+  must be added otherwise mouse drags attempt to "drag" the rendered <img>
+
+Issue could be reproduced by adding the following in a trame-rca VTK example: ``` with
+  layout.toolbar: v3.VTextField(v_model="test",) ```
+
+
 ## v2.2.2 (2025-10-29)
 
 ### Bug Fixes
