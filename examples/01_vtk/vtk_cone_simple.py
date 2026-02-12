@@ -1,6 +1,7 @@
 # Required for rendering initialization, not necessary for
 # local rendering, but doesn't hurt to include it
 import asyncio
+import time
 
 import vtkmodules.vtkRenderingOpenGL2  # noqa
 from trame.app import TrameApp, asynchronous
@@ -39,6 +40,10 @@ STATS_STYLES = """
 """
 
 
+def time_now_ms() -> int:
+    return int(time.time_ns() / 1000000)
+
+
 class ConeApp(TrameApp):
     def __init__(self, server=None):
         super().__init__(server)
@@ -46,6 +51,9 @@ class ConeApp(TrameApp):
         self.server.cli.add_argument("--encoder", default="turbo-jpeg")  # jpeg
         args, _ = self.server.cli.parse_known_args()
         self.state.encoder = args.encoder
+        self.state.stats = None
+        self.state.stats_display = ""
+        self.max_dt = 0
 
         self.render_window, self.cone_source = self.setup_vtk()
         self.build_ui()
@@ -81,6 +89,20 @@ class ConeApp(TrameApp):
             self.view_handler.update()
             await asyncio.sleep(1 / int(self.state.target_fps))
 
+    @change("stats")
+    def on_stats(self, stats, **_):
+        if stats is None:
+            self.state.stats_display = ""
+            return
+
+        now = time_now_ms()
+        ds = now - stats.get("st")
+        self.max_dt = max(self.max_dt, ds)
+        fps = stats.get("fps")
+        self.state.stats_display = (
+            f"round-trip: {int(ds)} [{self.max_dt}] ms - fps: {fps}"
+        )
+
     @change("playing")
     def on_playing(self, playing, **_):
         if playing:
@@ -89,6 +111,7 @@ class ConeApp(TrameApp):
     @change("target_fps")
     def on_target_fps(self, target_fps, **_):
         self.view_handler.target_fps = target_fps
+        self.max_dt = 0
 
     @change("max_pixel_count")
     def on_max_pixel_count(self, max_pixel_count, **_):
@@ -112,6 +135,8 @@ class ConeApp(TrameApp):
                 footer.add_child("Quality ({{quality[0]}}/{{quality[1]}})")
                 v3.VSpacer()
                 footer.add_child("Encoder ({{encoder}})")
+                v3.VSpacer()
+                footer.add_child("{{ stats_display }}")
 
             with layout.toolbar:
                 v3.VSpacer()
@@ -205,6 +230,8 @@ class ConeApp(TrameApp):
                     with client.SizeObserver("size"):
                         view = rca.RemoteControlledArea(
                             display="image",
+                            monitor="10",
+                            stats="stats = $event",
                         )
                         self.view_handler = view.create_view_handler(
                             self.render_window,
