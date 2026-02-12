@@ -27,10 +27,14 @@ export default {
       type: Object,
       default: () => ({ width: '100%' }),
     },
+    monitor: {
+      type: Number,
+      default: 0,
+    },
   },
   template: `
     <div style="width: 100%; height: 100%; display: flex; justify-content: center; align-items: center;">
-      <image-display-area v-if="display === 'image'" :name="name" :origin="origin" :poolSize="4" :imageStyle="imageStyle" />
+      <image-display-area v-if="display === 'image'" :name="name" :origin="origin" :poolSize="4" :imageStyle="imageStyle" :monitor="monitor" @stats="$emit('stats', $event)" />
       <media-source-display-area v-if="display === 'media-source'" :name="name" :origin="origin" />
       <video-decoder-display-area v-if="display === 'video-decoder'" :name="name" :origin="origin" />
       <raw-image-display-area v-if="display === 'raw-image'" :name="name" :origin="origin" :imageStyle="imageStyle" />

@@ -1,3 +1,5 @@
+import { FPSMonitor } from '../utils/FpsMonitor';
+
 class ImageFrame {
   constructor(vueComponent) {
     this.vueComponent = vueComponent;
@@ -37,10 +39,17 @@ export default {
       type: Object,
       default: () => ({ width: '100%' }),
     },
+    monitor: {
+      type: Number,
+      default: 0,
+    },
   },
   watch: {
     poolSize() {
       this.updatePoolSize();
+    },
+    monitor() {
+      this.updateMonitorWindow();
     },
   },
   data() {
@@ -74,7 +83,14 @@ export default {
       }
     },
   },
+  updateMonitorWindow() {
+    const bufferSize = Math.max(10, this.monitor);
+    this.fpsMonitor.windowSize = bufferSize;
+    this.fpsMonitor.windowStatSize = bufferSize;
+  },
   created() {
+    // Monitoring
+    this.fpsMonitor = new FPSMonitor(10, 10);
     // Image decoding
     this.frames = [];
     this.nextFrameIndex = 0;
@@ -97,6 +113,19 @@ export default {
           this.nextFrameIndex = (this.nextFrameIndex + 1) % this.frames.length;
           const frame = this.frames[this.nextFrameIndex];
           frame.update(meta.type, content);
+          if (this.monitor) {
+            const serverTime = meta.st;
+            const contentSize = content.length;
+            const stats = this.fpsMonitor.addEntry(serverTime, contentSize);
+            if (stats) {
+              const { avgFps, totalSize } = stats;
+              this.$emit('stats', {
+                fps: Math.round(avgFps),
+                bps: Math.floor(totalSize),
+                st: serverTime,
+              });
+            }
+          }
         } else {
           this.hasContent = false;
         }
