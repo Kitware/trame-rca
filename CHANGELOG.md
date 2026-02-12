@@ -1,6 +1,27 @@
 # CHANGELOG
 
 
+## v2.3.0 (2026-02-12)
+
+### Bug Fixes
+
+- **import**: Fix import file name
+  ([`236d3e0`](https://github.com/Kitware/trame-rca/commit/236d3e057c65ae6043ebde8e0a11c611717be1e2))
+
+### Documentation
+
+- **example**: Use max pixel count
+  ([`699bdb8`](https://github.com/Kitware/trame-rca/commit/699bdb8d62e7cb3222fb4c49358856e7bb254d9e))
+
+### Features
+
+- **max_pixel_count**: Allow to max pixel count
+  ([`3df8fac`](https://github.com/Kitware/trame-rca/commit/3df8fac8ff8a22637ab54c5f704968c2bdc6bcf8))
+
+- **monitor**: Add monitoring and resize throttling
+  ([`136e141`](https://github.com/Kitware/trame-rca/commit/136e141f3d5ca86ddaae0ee1e46fddae612010cb))
+
+
 ## v2.2.3 (2025-12-13)
 
 ### Bug Fixes
