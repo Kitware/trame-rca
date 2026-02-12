@@ -1,4 +1,4 @@
-import { FPSMonitor } from '../utils/FpsMonitor';
+import { FPSMonitor } from '../utils/FPSMonitor';
 
 class ImageFrame {
   constructor(vueComponent) {

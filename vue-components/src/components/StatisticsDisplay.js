@@ -1,4 +1,4 @@
-import { FPSMonitor } from '../utils/FpsMonitor';
+import { FPSMonitor } from '../utils/FPSMonitor';
 
 const UNITS = ['B/s', 'KB/s', 'MB/s'];
 
