@@ -1,16 +1,18 @@
 from __future__ import annotations
 
-import os
 import asyncio
+import math
+import os
 import time
 from asyncio import Queue
-from concurrent.futures.thread import ThreadPoolExecutor
 from concurrent.futures import Executor
+from concurrent.futures.thread import ThreadPoolExecutor
 from enum import Enum
-from typing import Callable, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable, Optional
 
 from numpy.typing import NDArray
 from trame.app import asynchronous
+
 from trame_rca.encoders.pil import encode as encode_pil
 
 if TYPE_CHECKING:
@@ -141,6 +143,14 @@ class RcaRenderScheduler:
         self._push_callback = callback
 
     @property
+    def target_fps(self):
+        return self._target_fps
+
+    @target_fps.setter
+    def target_fps(self, v):
+        self._target_fps = v
+
+    @property
     def _target_period_s(self):
         return 1.0 / self._target_fps
 
@@ -236,6 +246,7 @@ class RcaViewAdapter:
         self._press_set = set()
         self._do_render_on_interaction = do_schedule_render_on_interaction
         self._scale = 1
+        self._max_pixel_count = 0
         self._current_size = None
 
     def update_quality(self, interactive=50, still=90):
@@ -243,12 +254,51 @@ class RcaViewAdapter:
         self._scheduler._still_quality = still
 
     @property
+    def target_fps(self):
+        return self._scheduler.target_fps
+
+    @target_fps.setter
+    def target_fps(self, value):
+        self._scheduler.target_fps = value
+
+    @property
+    def max_pixel_count(self):
+        """Use 0 to disable capping of pixel count"""
+        return self._max_pixel_count
+
+    @max_pixel_count.setter
+    def max_pixel_count(self, value):
+        if self._max_pixel_count != value:
+            self._max_pixel_count = value
+
+            if self._current_size is not None:
+                self.update_size(
+                    "self",
+                    {
+                        "w": self._current_size[0],
+                        "h": self._current_size[1],
+                        "p": self._current_size[2],
+                    },
+                )
+
+    @property
     def image_size(self):
         if self._current_size is None:
             return (300, 300)
-        return int(self._current_size[0] * self._current_size[2] * self._scale), int(
-            self._current_size[1] * self._current_size[2] * self._scale
+        size_with_scale = (
+            int(self._current_size[0] * self._current_size[2] * self._scale),
+            int(self._current_size[1] * self._current_size[2] * self._scale),
         )
+        if self._max_pixel_count:
+            total = size_with_scale[0] * size_with_scale[1]
+            if total > self._max_pixel_count:
+                # not perfect but close enough
+                rescale = math.sqrt(self._max_pixel_count / total)
+                return (
+                    int(size_with_scale[0] * rescale),
+                    int(size_with_scale[1] * rescale),
+                )
+        return size_with_scale
 
     @property
     def scale(self):
@@ -280,6 +330,16 @@ class RcaViewAdapter:
         self._current_size = (width, height, pixel_ratio)
         width = int(width * pixel_ratio * self._scale)
         height = int(height * pixel_ratio * self._scale)
+
+        # Handle count cap
+        if self._max_pixel_count:
+            total = width * height
+            if total > self._max_pixel_count:
+                # not perfect but close enough
+                rescale = math.sqrt(self._max_pixel_count / total)
+                width = int(width * rescale)
+                height = int(height * rescale)
+
         self._window.process_resize_event(width, height)
         self._scheduler.schedule_render()
 
