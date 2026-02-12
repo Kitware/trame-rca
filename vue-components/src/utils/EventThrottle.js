@@ -9,6 +9,33 @@ async function sleep(timeMS) {
   return new Promise((resolve) => setTimeout(resolve, timeMS));
 }
 
+export class FunctionThrottle {
+  constructor(fn, throttleTimeMs = 100) {
+    this.isThrottled = false;
+    this.argsToUse = null;
+    this.delay = throttleTimeMs;
+    this._fn = fn;
+
+    this.next = () => {
+      this.isThrottled = false;
+      if (this.argsToUse !== null) {
+        this.run(...this.argsToUse);
+        this.argsToUse = null;
+      }
+    };
+  }
+
+  run(...args) {
+    if (this.isThrottled) {
+      this.argsToUse = args;
+      return;
+    }
+    this.isThrottled = true;
+    this._fn(...args);
+    setTimeout(this.next, this.delay);
+  }
+}
+
 /**
  * Class responsible for throttling and compressing the interaction events before they are handled by the server.
  * The class creates a queue of events to be processed and before sending the events compress identical events

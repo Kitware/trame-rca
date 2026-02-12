@@ -1,8 +1,11 @@
 """RCA Widgets support both vue2 and vue3."""
 
-from trame_client.widgets.core import AbstractElement
-from trame_rca.utils import RcaViewAdapter, RcaRenderScheduler
 import warnings
+
+from trame_client.widgets.core import AbstractElement
+
+from trame_rca.utils import RcaRenderScheduler, RcaViewAdapter
+
 from .. import module
 
 __all__ = [
@@ -40,6 +43,11 @@ class RemoteControlledArea(HtmlElement):
             ("image_style", "imageStyle"),
             ("send_mouse_move", "sendMouseMove"),
             ("event_throttle_ms", "eventThrottleMs"),
+            "monitor",
+            ("resize_throttle_ms", "resizeThrottleMs"),
+        ]
+        self._event_names += [
+            "stats",
         ]
 
         self.name = kwargs.get("name") or f"trame_rca_{RemoteControlledArea._next_id}"
@@ -111,6 +119,10 @@ class DisplayArea(HtmlElement):
             "origin",
             "display",
             ("image_style", "imageStyle"),
+            "monitor",
+        ]
+        self._event_names += [
+            "stats",
         ]
 
 
@@ -142,6 +154,10 @@ class ImageDisplayArea(HtmlElement):
             "origin",
             ("pool_size", "poolSize"),
             ("image_style", "imageStyle"),
+            "monitor",
+        ]
+        self._event_names += [
+            "stats",
         ]
 
 

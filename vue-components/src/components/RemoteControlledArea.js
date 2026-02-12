@@ -1,8 +1,9 @@
 import vtkRenderWindowInteractor from '@kitware/vtk.js/Rendering/Core/RenderWindowInteractor';
 import vtkInteractorStyleRemoteMouse from '../utils/interactorStyle';
 
-const { inject, provide, ref, toRefs, onMounted, onBeforeUnmount } = window.Vue;
-import { EventThrottle } from '../utils/EventThrottle';
+const { inject, provide, ref, toRefs, onMounted, onBeforeUnmount, watch } =
+  window.Vue;
+import { FunctionThrottle, EventThrottle } from '../utils/EventThrottle';
 
 const RESOLVED_PROMISED = Promise.resolve(true);
 
@@ -28,14 +29,29 @@ export default {
       type: Number,
       default: 25,
     },
+    resizeThrottleMs: {
+      type: Number,
+      default: 100,
+    },
     imageStyle: {
       type: Object,
       default: () => ({ width: '100%' }),
+    },
+    monitor: {
+      type: Number,
+      default: 0,
     },
   },
   setup(props) {
     const rootElem = ref(null);
     const trame = inject('trame');
+
+    // Resizing throttle
+    const throttleSize = new FunctionThrottle(
+      _pushSize,
+      props.resizeThrottleMs
+    );
+    watch(props.resizeThrottleMs, (v) => (throttleSize.delay = v));
 
     // Event throttle
     const throttle = new EventThrottle((event) => {
@@ -147,6 +163,10 @@ export default {
     });
 
     function pushSize(addOn) {
+      throttleSize.run(addOn);
+    }
+
+    function _pushSize(addOn) {
       if (trame) {
         if (readySizeUpdate) {
           readySizeUpdate = false;
@@ -194,7 +214,7 @@ export default {
   template: `
     <div ref="rootElem" style="margin: 0; padding: 0; position: relative; width: 100%; height: 100%;">
       <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;">
-        <display-area :display="display" :name="name" :origin="origin" :imageStyle="imageStyle" />
+        <display-area :display="display" :name="name" :origin="origin" :imageStyle="imageStyle" :monitor="monitor" @stats="$emit('stats', $event)" />
         <slot></slot>
       </div>
     </div>
