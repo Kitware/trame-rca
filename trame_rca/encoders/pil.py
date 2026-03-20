@@ -1,8 +1,14 @@
-from numpy.typing import NDArray
+from contextlib import suppress
 from io import BytesIO
-import pillow_avif  # noqa
+
+from numpy.typing import NDArray
 from PIL import Image
-from trame_rca.encoders.img import TO_IMAGE_TYPE, TO_IMAGE_FORMAT
+
+from trame_rca.encoders.img import TO_IMAGE_FORMAT, TO_IMAGE_TYPE
+
+# Not supported on all platform so make it optional
+with suppress(ImportError):
+    import pillow_avif  # noqa
 
 
 def encode(
