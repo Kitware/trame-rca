@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v2.3.1 (2026-03-20)
+
+### Bug Fixes
+
+- **dep**: Make avif pillow package optional
+  ([`a5566d8`](https://github.com/Kitware/trame-rca/commit/a5566d8d90dc73ef15e3dbddaf7f07b406ab9f17))
+
+
 ## v2.3.0 (2026-02-12)
 
 ### Bug Fixes
