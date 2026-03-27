@@ -1,6 +1,7 @@
 """RCA Widgets support both vue2 and vue3."""
 
 import warnings
+from weakref import WeakKeyDictionary, WeakValueDictionary
 
 from trame_client.widgets.core import AbstractElement
 
@@ -16,6 +17,8 @@ __all__ = [
     "MediaSourceDisplayArea",
     "VideoDecoderDisplayArea",
     "RawImageDisplayArea",
+    "ImageStream",
+    "ImageRegion",
 ]
 
 
@@ -195,4 +198,93 @@ class RawImageDisplayArea(HtmlElement):
             "name",
             "origin",
             ("image_style", "imageStyle"),
+        ]
+
+
+class ImageStream(HtmlElement):
+    ID = 0
+    NAMES = WeakKeyDictionary()
+    HANDLERS = WeakValueDictionary()
+
+    @classmethod
+    def _next_name(cls):
+        cls.ID += 1
+        return f"rca_image_stream_{cls.ID}"
+
+    @classmethod
+    def _get_rw_name(cls, render_window):
+        if render_window in cls.NAMES:
+            return cls.NAMES[render_window]
+        name = cls._next_name()
+        cls.NAMES[render_window] = name
+        return name
+
+    @classmethod
+    def _get_rw_handler(
+        cls,
+        render_window,
+        encoder="turbo-jpeg",
+        target_fps=30,
+        interactive_quality=80,
+        still_quality=95,
+        **kwargs,
+    ):
+        name = cls._get_rw_name(render_window)
+        if name in cls.HANDLERS:
+            return cls.HANDLERS[name]
+
+        scheduler = RcaRenderScheduler(
+            render_window,
+            target_fps=target_fps,
+            interactive_quality=interactive_quality,
+            still_quality=still_quality,
+            rca_encoder=encoder,
+            **kwargs,
+        )
+        handler = RcaViewAdapter(
+            render_window,
+            name,
+            scheduler=scheduler,
+            **kwargs,
+        )
+        cls.HANDLERS[render_window] = handler
+        return handler
+
+    def __init__(self, render_window, image="image", encoder="turbo-jpeg", **kwargs):
+        super().__init__("image-stream", **kwargs)
+        self._attr_names += [
+            "name",
+            ("pool_size", "poolSize"),
+        ]
+        self.render_window = render_window
+        self.name = self._get_rw_name(render_window)
+        self.handler = self._get_rw_handler(render_window, encoder)
+
+        #
+        if self.server.running:
+            self.server.root_server.controller.rc_area_register(self.handler)
+        else:
+            self.ctrl.on_server_ready.add(self._on_ready)
+
+        self._attributes["slot"] = f'v-slot="{{ {image}: image }}"'
+
+    def update(self):
+        self.handler.update()
+
+    def _on_ready(self, **_):
+        for handler in self.HANDLERS.values():
+            self.server.root_server.controller.rc_area_register(handler)
+
+
+class ImageRegion(HtmlElement):
+    def __init__(self, **kwargs):
+        super().__init__("image-region", **kwargs)
+        self._attr_names += [
+            "bounds",
+            ("enable_interaction", "enableInteraction"),
+            ("send_mouse_move", "sendMouseMove"),
+            ("event_throttle_ms", "eventThrottleMs"),
+        ]
+        self._event_names += [
+            "size",
         ]
