@@ -113,6 +113,7 @@ class RcaRenderScheduler:
         interactive_quality: Optional[int] = None,
         still_quality: Optional[int] = None,
         rca_encoder: Optional[RcaEncoder | str] = None,
+        **_,
     ):
         self._window = window_wrapper(window)
         self._rca_encoder = RcaEncoder(rca_encoder or RcaEncoder.JPEG)
@@ -227,6 +228,7 @@ class RcaViewAdapter:
         *,
         scheduler: RcaRenderScheduler = None,
         do_schedule_render_on_interaction=True,
+        **_,
     ):
         self._window = window_wrapper(window)
         if scheduler is None:

@@ -1,7 +1,7 @@
 from trame_rca.widgets.rca import *  # noqa: F403
 
 
-def initialize(server):
+def initialize(server, **kwargs):
     from trame_rca import module
 
-    server.enable_module(module)
+    server.enable_module(module, **kwargs)
