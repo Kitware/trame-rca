@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v2.4.0 (2026-03-30)
+
+### Features
+
+- **multiRenderer**: Add support single render view with many renderer
+  ([`828cc7d`](https://github.com/Kitware/trame-rca/commit/828cc7d1bc25b1cb49e1c67c45f88f3ec876ca56))
+
+
 ## v2.3.1 (2026-03-20)
 
 ### Bug Fixes
