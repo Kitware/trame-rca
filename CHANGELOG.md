@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v2.4.1 (2026-04-06)
+
+### Bug Fixes
+
+- **event**: Throttling of events
+  ([`f5f2408`](https://github.com/Kitware/trame-rca/commit/f5f240863a82752f582fe23fba49ff9fed108f85))
+
+
 ## v2.4.0 (2026-03-30)
 
 ### Features
