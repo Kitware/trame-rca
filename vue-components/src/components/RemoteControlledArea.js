@@ -60,6 +60,7 @@ export default {
         .getSession()
         .call('trame.rca.event', [props.name, props.origin, event]);
     }, props.eventThrottleMs);
+    watch(props.eventThrottleMs, (v) => (throttle.throttleTimeMs = v));
 
     // Mouse management
     let currentOffset = [0, 0];
@@ -85,7 +86,9 @@ export default {
       _getScreenEventPositionFor,
       currentRenderer: 1,
     });
-    const interactorStyle = vtkInteractorStyleRemoteMouse.newInstance();
+    const interactorStyle = vtkInteractorStyleRemoteMouse.newInstance({
+      throttleDelay: 0, // Use main EventThrottle
+    });
     windowInteractor.setInteractorStyle(interactorStyle);
 
     // Mouse
