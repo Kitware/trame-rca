@@ -1,8 +1,16 @@
 import vtkRenderWindowInteractor from '@kitware/vtk.js/Rendering/Core/RenderWindowInteractor';
 import vtkInteractorStyleRemoteMouse from '../utils/interactorStyle';
 
-const { inject, provide, ref, toRefs, onMounted, onBeforeUnmount, watch } =
-  window.Vue;
+const {
+  inject,
+  provide,
+  ref,
+  toRefs,
+  onMounted,
+  onBeforeUnmount,
+  watch,
+  watchEffect,
+} = window.Vue;
 import { FunctionThrottle, EventThrottle } from '../utils/EventThrottle';
 
 const RESOLVED_PROMISED = Promise.resolve(true);
@@ -60,7 +68,9 @@ export default {
         .getSession()
         .call('trame.rca.event', [props.name, props.origin, event]);
     }, props.eventThrottleMs);
-    watch(props.eventThrottleMs, (v) => (throttle.throttleTimeMs = v));
+    watchEffect(() => {
+      throttle.throttleTimeMs = Number(props.eventThrottleMs);
+    });
 
     // Mouse management
     let currentOffset = [0, 0];
