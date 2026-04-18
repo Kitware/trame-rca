@@ -1,9 +1,12 @@
 from pathlib import Path
+
+from trame_rca import __version__
+
 from ..protocol import StreamManager
 
 serve_path = str(Path(__file__).with_name("serve").resolve())
-serve = {"__trame_rca": serve_path}
-scripts = ["__trame_rca/trame-rca.umd.js"]
+serve = {f"__trame_rca_{__version__}": serve_path}
+scripts = [f"__trame_rca_{__version__}/trame-rca.umd.js"]
 vue_use = ["trame_rca"]
 
 
