@@ -1,6 +1,34 @@
 # CHANGELOG
 
 
+## v2.4.2 (2026-04-18)
+
+### Bug Fixes
+
+- **throttle**: Allow dynamic event throttling update
+  ([`33c7708`](https://github.com/Kitware/trame-rca/commit/33c77082648da2e912629b9d1abc809245ef015f))
+
+- **web**: Add version to prevent caching bug
+  ([`551abd3`](https://github.com/Kitware/trame-rca/commit/551abd310305b8f93745a9927df49e394111ebe4))
+
+- **web**: Update module path export
+  ([`38722dc`](https://github.com/Kitware/trame-rca/commit/38722dc4694148fe634080f0e3d3e369c65e9e5f))
+
+### Continuous Integration
+
+- Add more rules
+  ([`81a4aad`](https://github.com/Kitware/trame-rca/commit/81a4aad7c2b972ea24fa8786da88322bd4096ce4))
+
+- Fix pyproject
+  ([`522e6ea`](https://github.com/Kitware/trame-rca/commit/522e6ea503571dee636e7930b32f4a632476e15b))
+
+- Update action versions
+  ([`bd9ce07`](https://github.com/Kitware/trame-rca/commit/bd9ce071fdc9016122f6d3c784effac240de5f96))
+
+- Use hatchling
+  ([`fd916fc`](https://github.com/Kitware/trame-rca/commit/fd916fc28d543f9ff5d66175d309a4330c602815))
+
+
 ## v2.4.1 (2026-04-06)
 
 ### Bug Fixes
