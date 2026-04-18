@@ -15,7 +15,7 @@ export default {
         },
       },
     },
-    outDir: '../trame_rca/module/serve',
+    outDir: '../src/trame_rca/module/serve',
     assetsDir: '.',
     // sourcemap: true,
   },
