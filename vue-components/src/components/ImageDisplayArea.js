@@ -1,23 +1,41 @@
 import { FPSMonitor } from '../utils/FPSMonitor';
 
+const SUPPORTED_IMAGE_TYPES = {
+  'image/apng': 1,
+  'image/avif': 1,
+  'image/gif': 1,
+  'image/jpeg': 1,
+  'image/png': 1,
+  'image/svg+xml': 1,
+  'image/webp': 1,
+};
 class ImageFrame {
   constructor(vueComponent) {
     this.vueComponent = vueComponent;
     this.img = new Image();
+    this.pending = false;
     this.url = '';
     this.blob = null;
-
+    this.img.addEventListener('error', () => {
+      this.pending = false;
+    });
     this.img.addEventListener('load', () => {
+      this.pending = false;
       this.vueComponent.displayURL = this.url;
       this.vueComponent.hasContent = true;
     });
   }
 
   update(type, content) {
+    if (this.pending) {
+      return false;
+    }
+    this.pending = true;
     window.URL.revokeObjectURL(this.url);
     this.blob = new Blob([content], { type });
     this.url = URL.createObjectURL(this.blob);
     this.img.src = this.url;
+    return true;
   }
 }
 
@@ -99,31 +117,24 @@ export default {
     // Display stream
     this.wslinkSubscription = null;
     this.onImage = ([{ name, meta, content }]) => {
-      const supportedImageTypes = [
-        'image/apng',
-        'image/avif',
-        'image/gif',
-        'image/jpeg',
-        'image/png',
-        'image/svg+xml',
-        'image/webp',
-      ];
       if (this.name === name) {
-        if (supportedImageTypes.includes(meta.type)) {
-          this.nextFrameIndex = (this.nextFrameIndex + 1) % this.frames.length;
-          const frame = this.frames[this.nextFrameIndex];
-          frame.update(meta.type, content);
-          if (this.monitor) {
-            const serverTime = meta.st;
-            const contentSize = content.length;
-            const stats = this.fpsMonitor.addEntry(serverTime, contentSize);
-            if (stats) {
-              const { avgFps, totalSize } = stats;
-              this.$emit('stats', {
-                fps: Math.round(avgFps),
-                bps: Math.floor(totalSize),
-                st: serverTime,
-              });
+        if (SUPPORTED_IMAGE_TYPES[meta.type]) {
+          const nextIdx = (this.nextFrameIndex + 1) % this.frames.length;
+          const frame = this.frames[nextIdx];
+          if (frame.update(meta.type, content)) {
+            this.nextFrameIndex = nextIdx;
+            if (this.monitor) {
+              const serverTime = meta.st;
+              const contentSize = content.length;
+              const stats = this.fpsMonitor.addEntry(serverTime, contentSize);
+              if (stats) {
+                const { avgFps, totalSize } = stats;
+                this.$emit('stats', {
+                  fps: Math.round(avgFps),
+                  bps: Math.floor(totalSize),
+                  st: serverTime,
+                });
+              }
             }
           }
         } else {

@@ -13,6 +13,10 @@ import asyncio
 import time
 
 import vtkmodules.vtkRenderingOpenGL2  # noqa
+from trame.app import TrameApp
+from trame.decorators import change
+from trame.ui.vuetify3 import SinglePageLayout
+from trame_common.utils import profiler
 from vtkmodules.vtkFiltersSources import vtkConeSource
 
 # Required for interactor initialization
@@ -25,15 +29,13 @@ from vtkmodules.vtkRenderingCore import (
     vtkRenderWindowInteractor,
 )
 
-from trame.app import TrameApp
-from trame.decorators import change
-from trame.ui.vuetify3 import SinglePageLayout
 from trame.widgets import vuetify3 as v3
 
 # use this import path to allow -e install for dev
 from trame_rca.widgets import rca
 
 v3.enable_lab()
+profiler.enable()
 
 DEFAULT_RESOLUTION = 6
 STATS_STYLES = """

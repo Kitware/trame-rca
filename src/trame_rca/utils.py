@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING, Callable, Optional
 
 from numpy.typing import NDArray
 from trame.app import asynchronous
+from trame_common.utils import profiler
 
 from trame_rca.encoders.pil import encode as encode_pil
 
@@ -70,6 +71,10 @@ class RcaEncoder(Enum):
     PNG = "png"
     WEBP = "webp"
 
+    def __init__(self, value):
+        self._value_ = value
+        self._timer_msg = f"rca.encode.{self.value}"
+
     @property
     def _impl(self):
         """Return encoding method"""
@@ -86,7 +91,8 @@ class RcaEncoder(Enum):
         quality: int,
     ) -> tuple[bytes, dict, int]:
         now_ms = time_now_ms()
-        return self._impl(np_image, self.value, cols, rows, quality, now_ms)
+        with profiler.timer(self._timer_msg):
+            return self._impl(np_image, self.value, cols, rows, quality, now_ms)
 
 
 class RcaRenderScheduler:

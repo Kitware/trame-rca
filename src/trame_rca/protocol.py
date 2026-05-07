@@ -1,5 +1,7 @@
 from typing import Protocol, runtime_checkable
+
 from numpy.typing import NDArray
+from trame_common.utils import profiler
 from wslink import register as exportRpc
 from wslink.websocket import LinkProtocol
 
@@ -105,6 +107,10 @@ class StreamManager(LinkProtocol):
 
     @exportRpc("trame.rca.push")
     def push_content(self, area_name, metadata, content):
+        if self.coreServer.network_monitor.pending > 5:
+            # Drop frames when network is overloaded
+            profiler.LOGGER.action("rca.protocol.drop-frame")
+            return
         self.publish(
             "trame.rca.topic.stream",
             dict(name=area_name, meta=metadata, content=self.addAttachment(content)),
