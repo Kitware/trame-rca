@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v2.4.3 (2026-05-07)
+
+### Bug Fixes
+
+- **network**: Drop frames when network is over subscribed
+  ([`09ba096`](https://github.com/Kitware/trame-rca/commit/09ba096258f00a6a95ce6c4376f93579adbe924a))
+
+
 ## v2.4.2 (2026-04-18)
 
 ### Bug Fixes
