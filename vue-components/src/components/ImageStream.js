@@ -83,5 +83,5 @@ export default {
       image,
     };
   },
-  template: `<slot :image="image"></slot>`,
+  template: `<slot class="image-stream" :image="image"></slot>`,
 };

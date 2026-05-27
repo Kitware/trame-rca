@@ -1,0 +1,44 @@
+.remote-controlled-area {
+    margin: 0;
+    padding: 0;
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+
+.remote-controlled-area-content {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.display-area {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+}
+
+.video-decoder-display-area {
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+.image-region {
+    margin: 0;
+    padding: 0;
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+
+.image-region-canvas {
+    position: absolute;
+    width: 100%;
+    height: auto;
+}

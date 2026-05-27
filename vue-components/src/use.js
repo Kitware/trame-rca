@@ -1,3 +1,4 @@
+import "./style.css";
 import components from './components';
 
 export function install(Vue) {

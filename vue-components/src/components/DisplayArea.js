@@ -33,7 +33,7 @@ export default {
     },
   },
   template: `
-    <div style="width: 100%; height: 100%; display: flex; justify-content: center; align-items: center;">
+    <div class="display-area">
       <image-display-area v-if="display === 'image'" :name="name" :origin="origin" :poolSize="4" :imageStyle="imageStyle" :monitor="monitor" @stats="$emit('stats', $event)" />
       <media-source-display-area v-if="display === 'media-source'" :name="name" :origin="origin" />
       <video-decoder-display-area v-if="display === 'video-decoder'" :name="name" :origin="origin" />

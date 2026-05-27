@@ -77,7 +77,7 @@ export default {
   },
   inject: ['trame', 'rcaPushSize'],
   template: `
-    <div>
+    <div class="video-decoder-display-area">
       <h1 v-if="!isSupported">WebCodecs API is not supported.</h1>
       <canvas class="js-canvas"></canvas>
     </div>
