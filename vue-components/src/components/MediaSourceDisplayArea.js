@@ -156,7 +156,7 @@ export default {
   },
   inject: ['trame', 'rcaPushSize'],
   template: `
-    <video autoplay="autoplay" muted="muted" v-show="hasContent">
+    <video class="media-source-display-area" autoplay="autoplay" muted="muted" v-show="hasContent">
       Your browser does not support the video tag.
     </video>
   `,

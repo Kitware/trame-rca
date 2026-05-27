@@ -157,5 +157,5 @@ export default {
     this.cleanup();
   },
   inject: ['trame'],
-  template: `<slot><img :style="imageStyle" :src="displayURL" v-show="hasContent" draggable="false" /></slot>`,
+  template: `<slot><img class="image-display-area" :style="imageStyle" :src="displayURL" v-show="hasContent" draggable="false" /></slot>`,
 };

@@ -206,5 +206,9 @@ export default {
       canvas,
     };
   },
-  template: `<div ref="rootElem" style="margin: 0; padding: 0; position: relative; width: 100%; height: 100%;"><canvas ref="canvas" style="position:absolute;width:100%;height:auto;" /></div>`,
+  template: `
+    <div class="image-region" ref="rootElem" >
+      <canvas class="image-region-canvas" ref="canvas"/>
+    </div>
+  `,
 };

@@ -225,9 +225,9 @@ export default {
     return { rootElem, ...toRefs(props) };
   },
   template: `
-    <div ref="rootElem" style="margin: 0; padding: 0; position: relative; width: 100%; height: 100%;">
-      <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;">
-        <display-area :display="display" :name="name" :origin="origin" :imageStyle="imageStyle" :monitor="monitor" @stats="$emit('stats', $event)" />
+    <div class="remote-controlled-area" ref="rootElem">
+      <div class="remote-controlled-area-content">
+        <display-area :display="display" :imageStyle="imageStyle" :name="name" :origin="origin" :monitor="monitor" @stats="$emit('stats', $event)" />
         <slot></slot>
       </div>
     </div>

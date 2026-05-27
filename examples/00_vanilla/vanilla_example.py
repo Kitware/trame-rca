@@ -94,9 +94,7 @@ class VanillaApp(TrameApp):
                         display="image",
                         image_style=({},),  # restore default style with width: 100%
                     )
-                    self.view_handler = view.create_view_handler(
-                        self.window,
-                    )
+                    self.view_handler = view.create_view_handler(self.window)
 
 
 # -----------------------------------------------------------------------------

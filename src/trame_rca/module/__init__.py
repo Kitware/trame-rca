@@ -7,6 +7,7 @@ from ..protocol import StreamManager
 serve_path = str(Path(__file__).with_name("serve").resolve())
 serve = {f"__trame_rca_{__version__}": serve_path}
 scripts = [f"__trame_rca_{__version__}/trame-rca.umd.js"]
+styles = [f"__trame_rca_{__version__}/style.css"]
 vue_use = ["trame_rca"]
 
 

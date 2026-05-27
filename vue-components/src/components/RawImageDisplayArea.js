@@ -85,6 +85,7 @@ export default {
     this.cleanup();
   },
   inject: ['trame'],
-  template:
-    '<canvas class="js-canvas" :style="imageStyle" v-show="hasContent"></canvas>',
+  template: `
+    <canvas class="raw-image-display-area js-canvas" :style="imageStyle" v-show="hasContent"></canvas>
+  `
 };

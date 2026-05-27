@@ -45,6 +45,9 @@ Install the component
 Optional dependencies
 -----------------------------------------------------------
 
+TurboJPEG
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 Faster Jpeg encoding using TurboJPEG.
 
 **macOS system install**
@@ -77,3 +80,18 @@ Once your system is ready, you can try our code example:
 
     # other encoders: jpeg, avif, turbo-jpeg, png, webp
     python ./examples/01_vtk/vtk_cone_simple.py --encoder turbo-jpeg
+
+Video encoding with VTKStreaming
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+VTKStreaming provides tools for encoding and streaming frames from a VTK OpenGL render window using video codecs.
+When NVENC is available, it enables H.264/H.265 hardware encoding; otherwise, software encoding falls back to VP9 via libvpx.
+
+You can try our code example:
+
+.. code-block:: console
+
+    pip install trame trame-vuetify vtk
+    pip install "trame-rca[vtkstreaming]"
+
+    python ./examples/05_video/vtk_cone_simple_video.py

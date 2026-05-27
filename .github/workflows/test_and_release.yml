@@ -64,7 +64,7 @@ jobs:
 
       - name: Install and Run Tests
         run: |
-          pip install ".[turbo, avif, test]"
+          pip install ".[turbo, avif, vtkstreaming, dev]"
           # Install requirements for playwright
           playwright install
           pytest -s ./tests

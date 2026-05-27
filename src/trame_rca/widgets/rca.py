@@ -1,11 +1,20 @@
 """RCA Widgets support both vue2 and vue3."""
 
+from __future__ import annotations
+
 import warnings
+from typing import TYPE_CHECKING
 from weakref import WeakKeyDictionary, WeakValueDictionary
 
 from trame_client.widgets.core import AbstractElement
 
-from trame_rca.utils import RcaRenderScheduler, RcaViewAdapter
+if TYPE_CHECKING:
+    from vtkmodules.vtkRenderingCore import vtkRenderWindow
+
+from trame_rca.encoders import RcaImageEncoder
+from trame_rca.utils import RcaViewAdapter
+from trame_rca.schedulers import RcaImageRenderScheduler
+from trame_rca.rca import RemoteControlledAreaProtocol, window_wrapper
 
 from .. import module
 
@@ -33,9 +42,11 @@ class HtmlElement(AbstractElement):
 class RemoteControlledArea(HtmlElement):
     _next_id = 0
 
-    def __init__(self, **kwargs):
+    def __init__(self, name: str | None = None, display: str = "image", **kwargs):
         super().__init__(
             "remote-controlled-area",
+            name=name or f"trame_rca_{RemoteControlledArea._next_id}",
+            display=display,
             **kwargs,
         )
         RemoteControlledArea._next_id += 1
@@ -53,7 +64,6 @@ class RemoteControlledArea(HtmlElement):
             "stats",
         ]
 
-        self.name = kwargs.get("name") or f"trame_rca_{RemoteControlledArea._next_id}"
         self._handlers = []
         self.ctrl.on_server_ready.add(self._on_ready)
 
@@ -68,32 +78,42 @@ class RemoteControlledArea(HtmlElement):
 
     def create_view_handler(
         self,
-        render_window,
-        encoder=None,
-        target_fps=30,
-        interactive_quality=60,
-        still_quality=90,
+        window: RemoteControlledAreaProtocol | vtkRenderWindow,
+        encoder: RcaImageEncoder | str | None = None,
+        target_fps: float = 30.0,
+        interactive_quality: int = 60,
+        still_quality: int = 90,
     ):
         scheduler = None
-        if encoder:
-            scheduler = RcaRenderScheduler(
-                render_window,
+        window = window_wrapper(window)
+        if self.display == "video-decoder":
+            from trame_rca.rca import VtkRemoteControlledArea
+            from trame_rca.schedulers import RcaVideoRenderScheduler
+
+            if not isinstance(window, VtkRemoteControlledArea):
+                raise TypeError("Only VTK backends are supported by video decoder")
+            scheduler = RcaVideoRenderScheduler(window, target_fps=target_fps)
+
+        elif encoder:
+            scheduler = RcaImageRenderScheduler(
+                window,
                 target_fps=target_fps,
                 interactive_quality=interactive_quality,
                 still_quality=still_quality,
                 rca_encoder=encoder,
             )
-        view_handler = RcaViewAdapter(render_window, self.name, scheduler=scheduler)
+
+        view_handler = RcaViewAdapter(window, self.name, scheduler=scheduler)
         self.add_view_handler(view_handler)
         return view_handler
 
     def create_vtk_handler(
         self,
-        render_window,
-        encoder=None,
-        target_fps=30,
-        interactive_quality=60,
-        still_quality=90,
+        render_window: vtkRenderWindow,
+        encoder: RcaImageEncoder | str | None = None,
+        target_fps: float = 30.0,
+        interactive_quality: int = 60,
+        still_quality: int = 90,
     ):
         warnings.warn(
             "'create_vtk_handler' will be deprecated in a future version. "
@@ -233,7 +253,7 @@ class ImageStream(HtmlElement):
         if name in cls.HANDLERS:
             return cls.HANDLERS[name]
 
-        scheduler = RcaRenderScheduler(
+        scheduler = RcaImageRenderScheduler(
             render_window,
             target_fps=target_fps,
             interactive_quality=interactive_quality,
@@ -242,7 +262,7 @@ class ImageStream(HtmlElement):
             **kwargs,
         )
         handler = RcaViewAdapter(
-            render_window,
+            scheduler.rca,
             name,
             scheduler=scheduler,
             **kwargs,

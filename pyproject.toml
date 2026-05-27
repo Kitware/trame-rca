@@ -29,25 +29,26 @@ classifiers = [
 ]
 
 [project.optional-dependencies]
-test = [
+dev = [
     "pixelmatch",
+    "pre-commit",
     "pytest",
     "pytest-asyncio",
     "pytest-playwright",
     "pytest-xprocess",
+    "ruff",
     "trame-vuetify",
     "trame>=3.6",
-    "vtk",
-]
-dev = [
-    "pre-commit",
-    "ruff",
 ]
 avif = [
     "pillow-avif-plugin",
 ]
 turbo = [
     "PyTurboJPEG", # Requires libjpeg-turbo to be available on the system
+]
+vtkstreaming = [
+    "vtk",
+    "vtk-streaming>=0.3.2",
 ]
 
 
