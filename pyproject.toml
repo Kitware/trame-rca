@@ -29,10 +29,19 @@ classifiers = [
 ]
 
 [project.optional-dependencies]
+test = [
+    "pixelmatch",
+    "pytest",
+    "pytest-asyncio",
+    "pytest-playwright",
+    "pytest-xprocess",
+    "trame-vuetify",
+    "trame>=3.6",
+    "vtk",
+]
 dev = [
     "pre-commit",
     "ruff",
-    "pytest",
 ]
 avif = [
     "pillow-avif-plugin",
