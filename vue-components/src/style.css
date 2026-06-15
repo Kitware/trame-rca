@@ -1,17 +1,17 @@
 .remote-controlled-area {
-    margin: 0;
-    padding: 0;
-    position: relative;
-    width: 100%;
-    height: 100%;
+  margin: 0;
+  padding: 0;
+  position: relative;
+  width: 100%;
+  height: 100%;
 }
 
 .remote-controlled-area-content {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
 }
 
 .display-area {
@@ -24,21 +24,33 @@
 }
 
 .video-decoder-display-area {
-    position: absolute;
-    top: 0;
-    left: 0;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  --x-padding: 2px;
+  --y-padding: 2px;
+}
+
+.video-decoder-display-area canvas {
+  width: calc(100% + var(--x-padding));
+  height: calc(100% + var(--y-padding));
+  top: calc(var(--y-padding) * -0.5);
+  left: calc(var(--x-padding) * -0.5);
+  position: relative;
 }
 
 .image-region {
-    margin: 0;
-    padding: 0;
-    position: relative;
-    width: 100%;
-    height: 100%;
+  margin: 0;
+  padding: 0;
+  position: relative;
+  width: 100%;
+  height: 100%;
 }
 
 .image-region-canvas {
-    position: absolute;
-    width: 100%;
-    height: auto;
+  position: absolute;
+  width: 100%;
+  height: auto;
 }
