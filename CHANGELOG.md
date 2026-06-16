@@ -1,6 +1,42 @@
 # CHANGELOG
 
 
+## v2.5.0 (2026-06-16)
+
+### Bug Fixes
+
+- **style**: Enable pixel_ratio and padding handling for video
+  ([`653c2c4`](https://github.com/Kitware/trame-rca/commit/653c2c4cd87bf0d520469342500b617c95dcfde9))
+
+- **worker**: Debounce chunks decoding to fix Chromium 1-frame delay
+  ([`a7f9a4f`](https://github.com/Kitware/trame-rca/commit/a7f9a4f1f761ae7f5229b9b2c9292eae80be6f72))
+
+### Chores
+
+- **dependencies**: Move test requirements in pyproject.toml
+  ([`95d3cbc`](https://github.com/Kitware/trame-rca/commit/95d3cbcf58da3bf347b6276eac12ba75e9db8897))
+
+### Documentation
+
+- **perf**: Add example for generating perf traces
+  ([`83a7400`](https://github.com/Kitware/trame-rca/commit/83a74002ac418c5d8c18df6daf5d4d4cdaa8a346))
+
+### Features
+
+- **video encoder**: Support video encoding using vtk streaming
+  ([`b79f7c7`](https://github.com/Kitware/trame-rca/commit/b79f7c724cf35e3db0e0415a46e6e23df89252d4))
+
+chore: rename window protocols and restructure video encoder
+
+feat(css): fix css for video decoder and add class names to components
+
+feat(logger): removed prints for logger info or warning
+
+feat(css): create css file that leverages new class names
+
+fix(rca): fixes video encoder with new wheel and update examples
+
+
 ## v2.4.3 (2026-05-07)
 
 ### Bug Fixes
