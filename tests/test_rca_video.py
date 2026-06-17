@@ -18,10 +18,9 @@ if os.environ.get("CI") is not None and sys.platform != "linux":
 
 
 def test_a_view_can_be_encoded_to_format(a_render_window, tmpdir):
-    rca_encoder = RcaVideoEncoder(a_render_window)
     a_mock_push = MagicMock()
+    rca_encoder = RcaVideoEncoder(a_render_window, a_mock_push)
 
-    rca_encoder.set_push_callback(a_mock_push)
     rca_encoder.encode(a_render_window)
 
     time.sleep(1)
