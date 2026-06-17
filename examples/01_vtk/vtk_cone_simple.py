@@ -18,6 +18,7 @@ from trame.ui.vuetify3 import SinglePageLayout
 from trame.widgets import vuetify3 as v3
 
 # use this import path to allow -e install for dev
+from trame_rca.protocol import StreamManager
 from trame_rca.widgets import rca
 
 v3.enable_lab()
@@ -34,6 +35,15 @@ class ConeApp(TrameApp):
         self.state.encoder = args.encoder
         self.render_window, self.cone_source = self.setup_vtk()
         self.build_ui()
+
+        self.ctrl.on_server_ready.add(self._allow_drop_frames)
+
+    def _allow_drop_frames(self, **_):
+        """Allow to drop frames when network is overloaded"""
+        stream_manager: StreamManager = (
+            self.server.root_server.controller.get_stream_manager()
+        )
+        stream_manager.allow_drop_frames = True
 
     def setup_vtk(self):
         renderer = vtkRenderer()

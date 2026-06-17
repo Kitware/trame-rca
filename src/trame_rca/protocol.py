@@ -44,7 +44,16 @@ class AreaAdapter:
 class StreamManager(LinkProtocol):
     def __init__(self):
         super().__init__()
+        self._allow_drop_frames = False
         self._area_adapters = {}
+
+    @property
+    def allow_drop_frames(self) -> bool:
+        return self._allow_drop_frames
+
+    @allow_drop_frames.setter
+    def allow_drop_frames(self, v: bool):
+        self._allow_drop_frames = v
 
     def register_area(self, area_adapter):
         self._area_adapters[area_adapter.area_name] = area_adapter
@@ -64,7 +73,7 @@ class StreamManager(LinkProtocol):
 
     @exportRpc("trame.rca.push")
     def push_content(self, area_name, metadata, content):
-        if self.coreServer.network_monitor.pending > 5:
+        if self._allow_drop_frames and self.coreServer.network_monitor.pending > 5:
             # Drop frames when network is overloaded
             profiler.LOGGER.action("rca.protocol.drop-frame")
             return
