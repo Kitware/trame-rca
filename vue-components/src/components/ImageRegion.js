@@ -166,7 +166,13 @@ export default {
     // -----------------------------------------------------------------------
 
     function sendEvent(event) {
-      if (trame && props.enableInteraction) {
+      if (!trame) return;
+      if (
+        props.enableInteraction ||
+        (props.sendMouseMove &&
+          event.type === 'MouseMove' &&
+          event.action === 'up')
+      ) {
         throttle.sendEvent(event);
       }
     }
