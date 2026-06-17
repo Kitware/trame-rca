@@ -1,6 +1,27 @@
 # CHANGELOG
 
 
+## v2.5.1 (2026-06-17)
+
+### Bug Fixes
+
+- **ImageRegion**: Sendmousemove works regardless of enableInteraction
+  ([`294317b`](https://github.com/Kitware/trame-rca/commit/294317bc9e7efb56cde9ceaee512032195be7528))
+
+- **RemoteControlledArea**: Make sendMouseMove property reactive
+  ([`d48ef21`](https://github.com/Kitware/trame-rca/commit/d48ef2151adaac5cc4abb7ac1b0fc8bdf1567a59))
+
+### Continuous Integration
+
+- Apt update before install
+  ([`ed28d6e`](https://github.com/Kitware/trame-rca/commit/ed28d6eeba3098060532fee8e8b1e5b9a33ea88c))
+
+### Documentation
+
+- **example**: Update vanilla example with update call
+  ([`e043309`](https://github.com/Kitware/trame-rca/commit/e0433091247217e3ce6eaf4aea51af15cfc7671e))
+
+
 ## v2.5.0 (2026-06-16)
 
 ### Bug Fixes
