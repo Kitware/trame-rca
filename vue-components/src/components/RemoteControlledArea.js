@@ -102,7 +102,9 @@ export default {
     windowInteractor.setInteractorStyle(interactorStyle);
 
     // Mouse
-    interactorStyle.setSendMouseMove(props.sendMouseMove);
+    watchEffect(() => {
+      interactorStyle.setSendMouseMove(props.sendMouseMove);
+    });
     interactorStyle.onRemoteMouseEvent((e) => {
       sendEvent(
         Object.assign(
