@@ -1,4 +1,5 @@
 from time import time_ns
+from typing import Callable
 import logging
 
 from vtkmodules.vtkCommonCore import vtkUnsignedCharArray
@@ -51,11 +52,15 @@ def encode(
 
 
 class RcaVideoEncoder:
-    def __init__(self, render_window: vtkRenderWindow) -> None:
+    def __init__(
+        self,
+        render_window: vtkRenderWindow,
+        push_callback: Callable[[bytes, dict, int], None],
+    ) -> None:
         self._render_window = render_window
         self.encoder = None
         self.frame = None
-        self._push_callback = None
+        self._push_callback = push_callback
         self._window_size = None
 
         if vtkNvEncoderGL.CheckAvailability():
@@ -100,9 +105,6 @@ class RcaVideoEncoder:
         self.release()
         self._initialize(render_window)
 
-    def set_push_callback(self, callback):
-        self._push_callback = callback
-
     @calldata_type(VTK_OBJECT)
     def _on_encoded_chunk(
         self,
@@ -113,7 +115,7 @@ class RcaVideoEncoder:
         now_ms = int(time_ns() / 1000000)
         content, meta, _ = encode(video_packet, now_ms)
         if self._push_callback is not None:
-            self._push_callback(content, meta)
+            self._push_callback(content, meta, now_ms)
 
     def encode(self, render_window: vtkRenderWindow):
         if self.encoder is None or self.frame is None:

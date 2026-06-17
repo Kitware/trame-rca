@@ -34,7 +34,9 @@ class RcaVideoRenderScheduler:
         target_fps: float = 30.0,
     ):
         self._rca: VtkRemoteControlledArea = window_wrapper(window)
-        self._rca_encoder = RcaVideoEncoder(self._rca.render_window)
+        self._rca_encoder = RcaVideoEncoder(
+            self._rca.render_window, push_callback=self._push
+        )
         self._is_closing = False
         self._render_requested = False
 
@@ -48,8 +50,8 @@ class RcaVideoRenderScheduler:
     def rca(self) -> VtkRemoteControlledArea:
         return self._rca
 
-    def set_push_callback(self, callback: Callable[[bytes, dict], None]):
-        self._rca_encoder.set_push_callback(callback)
+    def set_push_callback(self, callback: Callable[[bytes, dict], bool]):
+        self._push_callback = callback
 
     @property
     def target_fps(self):
@@ -84,3 +86,6 @@ class RcaVideoRenderScheduler:
                 self._rca_encoder.encode(render_window)
 
             await sleep(self._target_period_s)
+
+    def _push(self, content: bytes, meta: dict, _m_time: int):
+        self._push_callback(content, meta)
