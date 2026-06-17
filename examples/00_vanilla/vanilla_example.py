@@ -1,14 +1,15 @@
-from numpy import asarray
 from pathlib import Path
+
+from numpy import asarray
 from PIL import Image
 from trame.app import TrameApp
 from trame.app.testing import enable_testing
 from trame.decorators import change
-from trame_rca.widgets import rca
 from trame.ui.vuetify3 import SinglePageLayout
-from trame.widgets import vuetify3 as v3
 from trame_client.module.vue3 import www
 
+from trame.widgets import vuetify3 as v3
+from trame_rca.widgets import rca
 
 DEFAULT_ROTATION_STEP = 45
 
@@ -60,6 +61,8 @@ class VanillaApp(TrameApp):
     @change("rotation_step")
     def update_rotation_step(self, rotation_step, **kwargs):
         self.window.rotation_step = rotation_step
+        self.window._image_angle = rotation_step
+        self.view_handler.update()
 
     def reset_rotation_step(self):
         self.state.rotation_step = DEFAULT_ROTATION_STEP
