@@ -1,6 +1,22 @@
 # CHANGELOG
 
 
+## v2.6.0 (2026-06-19)
+
+### Bug Fixes
+
+- **ImageRegion**: Sendmouseclick
+  ([`0d7dc17`](https://github.com/Kitware/trame-rca/commit/0d7dc176ad437f7a34bc90cadd030009c091f2ad))
+
+- **resize**: Debounce resize trigger
+  ([`4a1aeb3`](https://github.com/Kitware/trame-rca/commit/4a1aeb3a39e2692415670b0f63b016fb63b1a76f))
+
+### Features
+
+- **frame-drop**: Add per-widget option to drop frame when network overload
+  ([`eb96ef5`](https://github.com/Kitware/trame-rca/commit/eb96ef599862214a8b7e91b5de419c118787492a))
+
+
 ## v2.5.2 (2026-06-19)
 
 ### Bug Fixes
