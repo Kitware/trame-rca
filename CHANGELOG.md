@@ -1,6 +1,17 @@
 # CHANGELOG
 
 
+## v2.5.2 (2026-06-19)
+
+### Bug Fixes
+
+- **push callback**: Let video scheduler handle the push callback
+  ([`bb34f0f`](https://github.com/Kitware/trame-rca/commit/bb34f0f1c847c5091936f6477d9a61bdbca46a42))
+
+- **video padding**: Add padding only on bottom and right
+  ([`c4aca4e`](https://github.com/Kitware/trame-rca/commit/c4aca4e39f5bb3afdc7987c379ae03e553132a51))
+
+
 ## v2.5.1 (2026-06-17)
 
 ### Bug Fixes
