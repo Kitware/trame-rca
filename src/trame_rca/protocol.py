@@ -1,3 +1,4 @@
+from trame_common.utils import profiler
 from wslink import register as exportRpc
 from wslink.websocket import LinkProtocol
 
@@ -43,6 +44,7 @@ class AreaAdapter:
 class StreamManager(LinkProtocol):
     def __init__(self):
         super().__init__()
+        self.drop_frame_beyond = {}
         self._area_adapters = {}
 
     def register_area(self, area_adapter):
@@ -52,6 +54,10 @@ class StreamManager(LinkProtocol):
     def unregister_area(self, area_name):
         adapter = self._area_adapters.pop(area_name)
         adapter.set_streamer(None)
+
+    @exportRpc("trame.rca.drop")
+    def update_drop_frame_on_pending_network(self, area_name, limit):
+        self.drop_frame_beyond[area_name] = limit
 
     @exportRpc("trame.rca.size")
     def update_size(self, area_name, origin, size):
@@ -63,6 +69,12 @@ class StreamManager(LinkProtocol):
 
     @exportRpc("trame.rca.push")
     def push_content(self, area_name, metadata, content):
+        if self.coreServer.network_monitor.pending > self.drop_frame_beyond.get(
+            area_name, 9999
+        ):
+            # Drop frames when network is overloaded
+            profiler.LOGGER.action("rca.protocol.drop-frame")
+            return
         self.publish(
             "trame.rca.topic.stream",
             dict(name=area_name, meta=metadata, content=self.addAttachment(content)),

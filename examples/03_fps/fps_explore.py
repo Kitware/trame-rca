@@ -187,6 +187,10 @@ class ConeApp(TrameApp):
                         stats="stats = $event",
                         event_throttle_ms=("500/target_fps",),
                     )
+                    # prevent network backup
+                    # => seems to only trigger with fps > 140
+                    view.set_drop_frames_pending_network_limit(5)
+
                     self.view_handler = view.create_view_handler(
                         self.render_window,
                         encoder=self.state.encoder,
