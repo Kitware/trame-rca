@@ -1,3 +1,4 @@
+import macro from '@kitware/vtk.js/macro';
 import vtkRenderWindowInteractor from '@kitware/vtk.js/Rendering/Core/RenderWindowInteractor';
 import vtkInteractorStyleRemoteMouse from '../utils/interactorStyle';
 
@@ -164,18 +165,20 @@ export default {
       }
     }
 
-    const observer = new ResizeObserver(() => {
-      if (!rootElem.value) {
-        return;
-      }
-      const rect = rootElem.value.getBoundingClientRect();
-      const { top, left } = rect;
-      currentSizeUpdateEvent.w = rect.width;
-      currentSizeUpdateEvent.h = rect.height;
-      currentSizeUpdateEvent.p = window.devicePixelRatio;
-      currentOffset = [left, top];
-      pushSize();
-    });
+    const observer = new ResizeObserver(
+      macro.debounce(() => {
+        if (!rootElem.value) {
+          return;
+        }
+        const rect = rootElem.value.getBoundingClientRect();
+        const { top, left } = rect;
+        currentSizeUpdateEvent.w = rect.width;
+        currentSizeUpdateEvent.h = rect.height;
+        currentSizeUpdateEvent.p = window.devicePixelRatio;
+        currentOffset = [left, top];
+        pushSize();
+      }, 100)
+    );
 
     function pushSize(addOn) {
       throttleSize.run(addOn);
