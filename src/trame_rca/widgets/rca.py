@@ -327,6 +327,7 @@ class ImageRegion(HtmlElement):
             "bounds",
             ("enable_interaction", "enableInteraction"),
             ("send_mouse_move", "sendMouseMove"),
+            ("send_mouse_click", "sendMouseClick"),
             ("event_throttle_ms", "eventThrottleMs"),
         ]
         self._event_names += [
