@@ -1,4 +1,5 @@
 import vtkRenderWindowInteractor from '@kitware/vtk.js/Rendering/Core/RenderWindowInteractor';
+import macro from '@kitware/vtk.js/macro';
 import vtkInteractorStyleRemoteMouse from '../utils/interactorStyle';
 import { watchEffect, inject, ref, onMounted, onBeforeUnmount } from 'vue';
 import { EventThrottle } from '../utils/EventThrottle';
@@ -25,6 +26,8 @@ class EventTranslator {
   }
 }
 
+const CLICK_TYPE = { LeftButtonRelease: true, LeftButtonPress: true };
+
 export default {
   props: {
     bounds: {
@@ -35,6 +38,10 @@ export default {
       default: false,
     },
     sendMouseMove: {
+      type: Boolean,
+      default: false,
+    },
+    sendMouseClick: {
       type: Boolean,
       default: false,
     },
@@ -174,27 +181,31 @@ export default {
           event.action === 'up')
       ) {
         throttle.sendEvent(event);
+      } else if (props.sendMouseClick && CLICK_TYPE[event.type]) {
+        throttle.sendEvent(event);
       }
     }
 
-    const observer = new ResizeObserver(() => {
-      if (!rootElem.value) {
-        return;
-      }
-      const rect = rootElem.value.getBoundingClientRect();
-      const { top, left } = rect;
-      currentSizeUpdateEvent.w = rect.width;
-      currentSizeUpdateEvent.h = rect.height;
-      currentSizeUpdateEvent.p = window.devicePixelRatio;
-      currentOffset = [left, top];
-      emit('size', currentSizeUpdateEvent);
-    });
+    const observer = new ResizeObserver(
+      macro.debounce(() => {
+        if (!rootElem.value) {
+          return;
+        }
+        const rect = rootElem.value.getBoundingClientRect();
+        const { top, left } = rect;
+        currentSizeUpdateEvent.w = rect.width;
+        currentSizeUpdateEvent.h = rect.height;
+        currentSizeUpdateEvent.p = window.devicePixelRatio;
+        currentOffset = [left, top];
+        emit('size', currentSizeUpdateEvent);
+      }, 100)
+    );
 
     onMounted(() => {
-      observer.observe(rootElem.value);
       windowInteractor.initialize();
       windowInteractor.bindEvents(rootElem.value);
       window.addEventListener('scroll', onScroll);
+      observer.observe(rootElem.value);
     });
 
     onBeforeUnmount(() => {
