@@ -12,9 +12,9 @@ if TYPE_CHECKING:
     from vtkmodules.vtkRenderingCore import vtkRenderWindow
 
 from trame_rca.encoders import RcaImageEncoder
-from trame_rca.utils import RcaViewAdapter
-from trame_rca.schedulers import RcaImageRenderScheduler
 from trame_rca.rca import RemoteControlledAreaProtocol, window_wrapper
+from trame_rca.schedulers import RcaImageRenderScheduler
+from trame_rca.utils import RcaViewAdapter
 
 from .. import module
 
@@ -43,6 +43,7 @@ class RemoteControlledArea(HtmlElement):
     _next_id = 0
 
     def __init__(self, name: str | None = None, display: str = "image", **kwargs):
+        self._drop_frame_limit = 9999  # no limit / aka no frame drop
         super().__init__(
             "remote-controlled-area",
             name=name or f"trame_rca_{RemoteControlledArea._next_id}",
@@ -65,7 +66,28 @@ class RemoteControlledArea(HtmlElement):
         ]
 
         self._handlers = []
-        self.ctrl.on_server_ready.add(self._on_ready)
+
+        if self.server.running:
+            self._on_ready()
+        else:
+            self.ctrl.on_server_ready.add(self._on_ready)
+
+    def set_drop_frames_pending_network_limit(self, limit: int):
+        """
+        To prevent network backing up, it can be good to provide
+        a limit of 5 when using an encoder that can support it.
+        The provided value can not be less than 1.
+
+        Image encoder support it but video encoder may not.
+        """
+        limit = int(limit)
+        if limit < 1:
+            msg = "The limit can not be smaller than 1"
+            raise ValueError(msg)
+        self._drop_frame_limit = limit
+
+        if self.server.running:
+            self._on_ready()
 
     def add_view_handler(self, view_handler):
         if view_handler in self._handlers:
@@ -126,6 +148,8 @@ class RemoteControlledArea(HtmlElement):
         )
 
     def _on_ready(self, **_):
+        self.server.protocol_call("trame.rca.drop", self.name, self._drop_frame_limit)
+
         while self._handlers:
             handler = self._handlers.pop()
             self.server.root_server.controller.rc_area_register(handler)
