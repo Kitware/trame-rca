@@ -92,7 +92,11 @@ export default {
     // -----------------------------------------------------------------------
     // Mouse management
     let currentOffset = [0, 0];
-    let currentSizeUpdateEvent = { w: 10, h: 10, p: window.devicePixelRatio };
+    let currentSizeUpdateEvent = {
+      w: 10,
+      h: 10,
+      p: Math.max(1, window.devicePixelRatio),
+    };
 
     function onScroll() {
       if (!rootElem.value) {
@@ -195,7 +199,7 @@ export default {
         const { top, left } = rect;
         currentSizeUpdateEvent.w = rect.width;
         currentSizeUpdateEvent.h = rect.height;
-        currentSizeUpdateEvent.p = window.devicePixelRatio;
+        currentSizeUpdateEvent.p = Math.max(1, window.devicePixelRatio);
         currentOffset = [left, top];
         emit('size', currentSizeUpdateEvent);
       }, 100)

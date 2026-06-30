@@ -77,7 +77,11 @@ export default {
     let currentOffset = [0, 0];
 
     // Size management
-    let currentSizeUpdateEvent = { w: 10, h: 10, p: window.devicePixelRatio };
+    let currentSizeUpdateEvent = {
+      w: 10,
+      h: 10,
+      p: Math.max(1, window.devicePixelRatio),
+    };
     let readySizeUpdate = true;
     let pendingSizeUpdatePromise = RESOLVED_PROMISED;
     let pendingSizeUpdateCount = 0;
@@ -174,7 +178,7 @@ export default {
         const { top, left } = rect;
         currentSizeUpdateEvent.w = rect.width;
         currentSizeUpdateEvent.h = rect.height;
-        currentSizeUpdateEvent.p = window.devicePixelRatio;
+        currentSizeUpdateEvent.p = Math.max(1, window.devicePixelRatio);
         currentOffset = [left, top];
         pushSize();
       }, 100)
