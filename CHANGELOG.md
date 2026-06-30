@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v2.6.1 (2026-06-30)
+
+### Bug Fixes
+
+- **devicePixelRatio**: Never go below 1 to prevent blur image
+  ([`6f41ab4`](https://github.com/Kitware/trame-rca/commit/6f41ab48ecca10fc3fc4e2d2f344cc113d35976b))
+
+
 ## v2.6.0 (2026-06-19)
 
 ### Bug Fixes
