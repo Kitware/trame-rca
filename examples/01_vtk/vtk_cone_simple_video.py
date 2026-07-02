@@ -22,6 +22,11 @@ DEFAULT_RESOLUTION = 6
 class ConeApp(TrameApp):
     def __init__(self, server=None):
         super().__init__(server)
+
+        self.server.cli.add_argument("--encoder", default="auto")
+        args, _ = self.server.cli.parse_known_args()
+
+        self.encoder = args.encoder
         self.render_window = self.setup_vtk()
 
         self._build_ui()
@@ -76,7 +81,9 @@ class ConeApp(TrameApp):
 
             with layout.content:
                 view = rca.RemoteControlledArea(display="video-decoder")
-                self.view_handler = view.create_view_handler(self.render_window)
+                self.view_handler = view.create_view_handler(
+                    self.render_window, encoder=self.encoder
+                )
 
 
 # -----------------------------------------------------------------------------
