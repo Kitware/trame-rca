@@ -11,7 +11,7 @@ from trame_client.widgets.core import AbstractElement
 if TYPE_CHECKING:
     from vtkmodules.vtkRenderingCore import vtkRenderWindow
 
-from trame_rca.encoders import RcaImageEncoder
+from trame_rca.encoders import RcaImageEncoder, VideoEncoderType
 from trame_rca.rca import RemoteControlledAreaProtocol, window_wrapper
 from trame_rca.schedulers import RcaImageRenderScheduler
 from trame_rca.utils import RcaViewAdapter
@@ -101,7 +101,7 @@ class RemoteControlledArea(HtmlElement):
     def create_view_handler(
         self,
         window: RemoteControlledAreaProtocol | vtkRenderWindow,
-        encoder: RcaImageEncoder | str | None = None,
+        encoder: RcaImageEncoder | VideoEncoderType | str | None = None,
         target_fps: float = 30.0,
         interactive_quality: int = 60,
         still_quality: int = 90,
@@ -114,7 +114,9 @@ class RemoteControlledArea(HtmlElement):
 
             if not isinstance(window, VtkRemoteControlledArea):
                 raise TypeError("Only VTK backends are supported by video decoder")
-            scheduler = RcaVideoRenderScheduler(window, target_fps=target_fps)
+            scheduler = RcaVideoRenderScheduler(
+                window, target_fps=target_fps, rca_encoder=encoder
+            )
 
         elif encoder:
             scheduler = RcaImageRenderScheduler(
