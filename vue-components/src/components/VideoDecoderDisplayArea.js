@@ -61,6 +61,10 @@ export default {
       };
 
       if (this.trame) {
+        this.trame.client
+          .getConnection()
+          .getSession()
+          .call('trame.rca.reset', [this.name]);
         this.wslinkSubscription = this.trame.client
           .getConnection()
           .getSession()

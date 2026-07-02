@@ -1,4 +1,4 @@
-from typing import Protocol, Callable, runtime_checkable
+from typing import Callable, Protocol, runtime_checkable
 
 from trame_rca.rca import RemoteControlledAreaProtocol
 
@@ -61,3 +61,10 @@ class RcaRenderSchedulerProtocol(Protocol):
         and perform any cleanup required before the scheduler is discarded.
         """
         ...
+
+    def reset(self) -> None:
+        """
+        Re-initialize the encoder.
+
+        This method should be called every time a client is connecting to the stream.
+        """

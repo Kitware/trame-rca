@@ -1,11 +1,6 @@
+import logging
 from time import time_ns
 from typing import Callable
-import logging
-
-from vtkmodules.vtkCommonCore import vtkUnsignedCharArray
-from vtkmodules.vtkRenderingCore import vtkRenderWindow
-from vtkmodules.util.misc import calldata_type
-from vtkmodules.util.vtkConstants import VTK_OBJECT
 
 from vtk_streaming.vtkStreamingCore import (
     VTKPF_IYUV,
@@ -17,6 +12,10 @@ from vtk_streaming.vtkStreamingEncode import vtkVideoEncoder
 from vtk_streaming.vtkStreamingNvEncode import vtkNvEncoderGL
 from vtk_streaming.vtkStreamingOpenGL2 import vtkOpenGLVideoFrame
 from vtk_streaming.vtkStreamingVpxEncode import vtkVpxEncoder
+from vtkmodules.util.misc import calldata_type
+from vtkmodules.util.vtkConstants import VTK_OBJECT
+from vtkmodules.vtkCommonCore import vtkUnsignedCharArray
+from vtkmodules.vtkRenderingCore import vtkRenderWindow
 
 logger = logging.getLogger(__name__)
 
@@ -70,21 +69,16 @@ class RcaVideoEncoder:
             logger.info("Using VP9 through libvpx")
             self._create_encoder = create_vpx_encoder
 
+        self.encoder = self._create_encoder()
         self._initialize(render_window)
 
     def _set_size(self, render_window_size: tuple[int]):
         self._window_size = render_window_size
-        width = self._window_size[0] + self._window_size[0] % 4
-        height = self._window_size[1] + self._window_size[1] % 4
-
-        self.encoder.SetWidth(width)
-        self.encoder.SetHeight(height)
-        self.frame.SetWidth(width)
-        self.frame.SetHeight(height)
+        self.frame.SetWidth(self._window_size[0])
+        self.frame.SetHeight(self._window_size[1])
         self.frame.AllocateDataStore()
 
     def _initialize(self, render_window: vtkRenderWindow):
-        self.encoder = self._create_encoder()
         self.encoder.SetGraphicsContext(render_window)
         self.encoder.SetInputPixelFormat(VTKPF_IYUV)
         self.encoder.SetBitRateControlMode(3)  # Constant quantization
@@ -127,5 +121,5 @@ class RcaVideoEncoder:
         self.encoder.Encode(self.frame)
 
     def release(self):
-        self.encoder = None
-        self.frame = None
+        if self.encoder is not None:
+            self.encoder.Shutdown()
