@@ -146,3 +146,6 @@ class RcaImageRenderScheduler:
             if m_time >= self._last_push_time_ms and self._push_callback is not None:
                 self._last_push_time_ms = m_time
                 self._push_callback(img, meta)
+
+    def reset(self):
+        """Nothing to do with images"""

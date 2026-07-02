@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import math
-
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -140,6 +139,10 @@ class RcaViewAdapter:
 
         self._rca.process_resize_event(width, height)
         self._scheduler.schedule_render()
+
+    def reset(self):
+        """Reset encoder"""
+        self._scheduler.reset()
 
     def push(self, content: bytes, meta: dict):
         if not self.streamer:

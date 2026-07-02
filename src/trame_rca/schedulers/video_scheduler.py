@@ -1,16 +1,17 @@
 from __future__ import annotations
 
 from asyncio import sleep
-from typing import Callable, TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable
 
 from trame.app import asynchronous
 
 if TYPE_CHECKING:
     from vtkmodules.vtkRenderingCore import vtkRenderWindow
+
     from trame_rca.rca import VtkRemoteControlledArea
 
-from trame_rca.rca import window_wrapper
 from trame_rca.encoders import RcaVideoEncoder
+from trame_rca.rca import window_wrapper
 
 
 class RcaVideoRenderScheduler:
@@ -89,3 +90,6 @@ class RcaVideoRenderScheduler:
 
     def _push(self, content: bytes, meta: dict, _m_time: int):
         self._push_callback(content, meta)
+
+    def reset(self):
+        self._rca_encoder._reset(self._rca.render_window)

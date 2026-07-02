@@ -87,3 +87,9 @@ class StreamManager(LinkProtocol):
             adapter.on_interaction(origin, event)
         else:
             print(f"No area {area_name} available for event")
+
+    @exportRpc("trame.rca.reset")
+    def on_reset(self, area_name):
+        adapter = self._area_adapters.get(area_name, None)
+        if adapter:
+            adapter.reset()
