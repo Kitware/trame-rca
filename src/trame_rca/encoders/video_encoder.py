@@ -1,3 +1,4 @@
+from enum import Enum, auto
 from time import time_ns
 from typing import Callable
 import logging
@@ -51,11 +52,18 @@ def encode(
     return (bytes(frame_data), meta, now_ms)
 
 
+class VideoEncoderType(Enum):
+    AUTO = auto()
+    NVENC = auto()
+    VP9 = auto()
+
+
 class RcaVideoEncoder:
     def __init__(
         self,
         render_window: vtkRenderWindow,
         push_callback: Callable[[bytes, dict, int], None],
+        rca_encoder: VideoEncoderType | str | None = None,
     ) -> None:
         self._render_window = render_window
         self.encoder = None
@@ -63,7 +71,14 @@ class RcaVideoEncoder:
         self._push_callback = push_callback
         self._window_size = None
 
-        if vtkNvEncoderGL.CheckAvailability():
+        rca_encoder = rca_encoder or VideoEncoderType.AUTO
+        if isinstance(rca_encoder, str):
+            rca_encoder = VideoEncoderType[rca_encoder.upper()]
+
+        if vtkNvEncoderGL.CheckAvailability() and rca_encoder in [
+            VideoEncoderType.AUTO,
+            VideoEncoderType.NVENC,
+        ]:
             logger.info("Using H264 through NVENC")
             self._create_encoder = create_nvenc_encoder
         else:
