@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v2.6.2 (2026-07-02)
+
+### Bug Fixes
+
+- **video**: Auto-reset on mount
+  ([`2131177`](https://github.com/Kitware/trame-rca/commit/2131177467ef513020e7e97e7405edbab0b6f68b))
+
+
 ## v2.6.1 (2026-06-30)
 
 ### Bug Fixes
