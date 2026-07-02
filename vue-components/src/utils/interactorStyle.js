@@ -211,10 +211,10 @@ function vtkInteractorStyleRemoteMouse(publicAPI, model) {
   };
 
   //----------------------------------------------------------------------------
-
+  let lastPinchEvent = {};
   publicAPI.handlePinch = (callData) => {
     const { scale: factor, touches: positions } = callData;
-    model.lastPinchEvent = {
+    lastPinchEvent = {
       factor,
       positions,
     };
@@ -232,7 +232,7 @@ function vtkInteractorStyleRemoteMouse(publicAPI, model) {
     publicAPI.endDolly();
     publicAPI.invokeRemoteGestureEvent({
       type: 'EndPinch',
-      ...model.lastPinchEvent,
+      ...lastPinchEvent,
       ...model.remoteEventAddOn,
     });
     // model._interactor.cancelAnimation(publicAPI.handleStartPinch);
