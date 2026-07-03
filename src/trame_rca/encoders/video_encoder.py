@@ -81,7 +81,7 @@ class RcaVideoEncoder:
     def _initialize(self, render_window: vtkRenderWindow):
         self.encoder.SetGraphicsContext(render_window)
         self.encoder.SetInputPixelFormat(VTKPF_IYUV)
-        self.encoder.SetBitRateControlMode(3)  # Constant quantization
+        self.encoder.SetBitRateControlMode(vtkVideoEncoder.BRCType.CQP)
         self.encoder.SetQuantizationParameter(5)  # 0 (high quality) - 63 (low quality)
 
         self.frame = vtkOpenGLVideoFrame()
@@ -115,8 +115,7 @@ class RcaVideoEncoder:
         if self.encoder is None or self.frame is None:
             return
         if self._window_size != render_window.GetSize():
-            # Ideally we would just call _set_size here
-            self._reset(render_window)
+            self._set_size(render_window_size=render_window.size)
         self.frame.Capture(render_window)
         self.encoder.Encode(self.frame)
 

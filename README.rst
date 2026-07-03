@@ -95,3 +95,17 @@ You can try our code example:
     pip install "trame-rca[vtkstreaming]"
 
     python ./examples/05_video/vtk_cone_simple_video.py
+
+In order to use source-build of vtkstreaming, please clone [VTKStreaming](https://github.com/Kitware/VTKStreaming.git) one level
+up outside the trame-rca directory, checkout the `wheel` branch, and install it inside the trame-rca virtual environment
+
+.. code-block:: console
+
+    cd ..
+    git clone https://github.com/Kitware/VTKStreaming.git
+    cd VTKstreaming
+    uv pip install --group dev          # build deps into active venv; index from tool.uv.index
+    uv pip install -e . --no-build-isolation
+    cd ../trame-rca
+
+    python ./examples/05_video/vtk_cone_simple_video.py

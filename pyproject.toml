@@ -48,15 +48,8 @@ turbo = [
 ]
 vtkstreaming = [
     "vtk",
-    "vtk-streaming>=0.3.2",
+    "vtk-streaming>=0.3.4",
 ]
-
-
-
-
-
-
-
 
 [build-system]
 requires = ["hatchling"]
