@@ -45,75 +45,37 @@ function createDecoder(canvas) {
   return new VideoDecoder(init);
 }
 
-let decoder = null;
-let debounceTimer = null;
-let lastChunkData = null;
-let lastChunkMeta = null;
-
-function resetDebounceTimer() {
-  if (debounceTimer) {
-    clearTimeout(debounceTimer);
-    debounceTimer = null;
-  }
-}
-
-function executeDebouncedDecode() {
-  if (lastChunkData && decoder) {
-    decoder.decode(new EncodedVideoChunk({
-      timestamp: lastChunkMeta.timestamp + 1,
-      type: lastChunkMeta.type,
-      data: lastChunkData,
-    }));
-    lastChunkData = null;
-    lastChunkMeta = null;
-  }
-}
-
 onmessage = async function({ data: msg }) {
   switch(msg.action) {
     case 1: // init
       this.canvas = msg.canvas;
-      decoder = createDecoder(this.canvas);
+      this.decoder = createDecoder(this.canvas);
       break;
-
     case 2: // config
       this.canvas.width = msg.config.codedWidth;
       this.canvas.height = msg.config.codedHeight;
-      decoder.configure({ ...msg.config, optimizeForLatency: true });
+      this.decoder.configure({ ...msg.config, optimizeForLatency: true });
       break;
-
     case 3: // chunk
-      resetDebounceTimer();
-      lastChunkData = msg.data.slice(0);
-      lastChunkMeta = { timestamp: msg.timestamp, type: msg.type };
-
-      decoder.decode(new EncodedVideoChunk({
+      this.decoder.decode(new EncodedVideoChunk({
         timestamp: msg.timestamp,
         type: msg.type,
         data: msg.data,
       }));
-
-      debounceTimer = setTimeout(executeDebouncedDecode, 35);
       break;
-
     case 4: // flush
-      resetDebounceTimer();
-      decoder.flush();
+      this.decoder.flush();
       break;
-
     case 5: // reset
-      resetDebounceTimer();
-      decoder.reset();
+      this.decoder.reset();
       break;
-
     case 6: // close
       // flush before close() to avoid currepoted state.
       // calling postMessage(flush)
       //         postMessage(close) is not enough since the second
       // abort the first before it finishes.
-      resetDebounceTimer();
-      await decoder.flush();
-      decoder.close();
+      await this.decoder.flush();
+      this.decoder.close();
       break;
   }
 }
