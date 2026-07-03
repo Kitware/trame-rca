@@ -79,7 +79,7 @@ onmessage = async function({ data: msg }) {
     case 2: // config
       this.canvas.width = msg.config.codedWidth;
       this.canvas.height = msg.config.codedHeight;
-      decoder.configure(msg.config);
+      decoder.configure({ ...msg.config, optimizeForLatency: true });
       break;
 
     case 3: // chunk
