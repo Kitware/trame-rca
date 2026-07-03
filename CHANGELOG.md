@@ -1,6 +1,17 @@
 # CHANGELOG
 
 
+## v2.6.3 (2026-07-03)
+
+### Bug Fixes
+
+- **video_rca**: Bump vtk-streaming to 0.3.4 for vpx encoder fix
+  ([`f1ab553`](https://github.com/Kitware/trame-rca/commit/f1ab553d28049c728694cbaf58efce6fd5c39f38))
+
+- just call set_size if window size is different from last encode isntead of recreating encoder and
+  frame from sratch
+
+
 ## v2.6.2 (2026-07-02)
 
 ### Bug Fixes
