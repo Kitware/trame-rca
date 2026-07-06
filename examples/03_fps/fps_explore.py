@@ -4,7 +4,7 @@
 # requires-python = ">=3.10"
 # dependencies = [
 #     "trame>=3.10",
-#     "trame-rca[turbo]",
+#     "trame-rca[turbo,vtkstreaming]",
 #     "trame-vuetify",
 #     "vtk>=9.6",
 # ]
@@ -29,7 +29,7 @@ from vtkmodules.vtkRenderingCore import (
     vtkRenderWindowInteractor,
 )
 
-from trame.widgets import vuetify3 as v3
+from trame.widgets import html, vuetify3 as v3
 
 # use this import path to allow -e install for dev
 from trame_rca.widgets import rca
@@ -38,6 +38,7 @@ v3.enable_lab()
 profiler.enable()
 
 DEFAULT_RESOLUTION = 6
+DEFAULT_QUANTIZATION = 5  # 0 (high quality) - 63 (low quality)
 STATS_STYLES = """
     position: absolute;
     top: 1rem;
@@ -48,9 +49,24 @@ STATS_STYLES = """
     z-index: 100;
 """
 
+IMAGE = "image"
+VIDEO = "video-decoder"
+
 
 def time_now_ms() -> int:
     return int(time.time_ns() / 1000000)
+
+
+def video_codec_label() -> str:
+    """Codec selection is automatic (see RcaVideoEncoder.__init__)."""
+    try:
+        from vtk_streaming.vtkStreamingNvEncode import vtkNvEncoderGL
+
+        if vtkNvEncoderGL.CheckAvailability():
+            return "h264 (nvenc)"
+        return "vp9 (libvpx)"
+    except ImportError:
+        return "unavailable"
 
 
 class ConeApp(TrameApp):
@@ -60,6 +76,8 @@ class ConeApp(TrameApp):
         self.server.cli.add_argument("--encoder", default="turbo-jpeg")  # jpeg
         args, _ = self.server.cli.parse_known_args()
         self.state.encoder = args.encoder
+        self.state.video_codec = video_codec_label()
+        self.state.display_mode = IMAGE
         self.state.stats = None
         self.state.stats_display = ""
         self.max_dt = 0
@@ -67,10 +85,17 @@ class ConeApp(TrameApp):
         self.render_window, self.cone_source = self.setup_vtk()
         self.build_ui()
 
+    @property
+    def view_handler(self):
+        if self.state.display_mode == VIDEO:
+            return self.video_view_handler
+        return self.image_view_handler
+
     def setup_vtk(self):
         renderer = vtkRenderer()
         renderWindow = vtkRenderWindow()
         renderWindow.AddRenderer(renderer)
+        renderWindow.OffScreenRenderingOn()
 
         renderWindowInteractor = vtkRenderWindowInteractor()
         renderWindowInteractor.SetRenderWindow(renderWindow)
@@ -84,6 +109,7 @@ class ConeApp(TrameApp):
 
         renderer.AddActor(actor)
         renderer.ResetCamera()
+        renderWindow.Render()
 
         return renderWindow, cone_source
 
@@ -119,17 +145,29 @@ class ConeApp(TrameApp):
 
     @change("target_fps")
     def on_target_fps(self, target_fps, **_):
-        self.view_handler.target_fps = target_fps
+        self.image_view_handler.target_fps = target_fps
+        self.video_view_handler.target_fps = target_fps
         self.max_dt = 0
+
+    @change("display_mode")
+    def on_display_mode(self, **_):
+        self.max_dt = 0
+        self.state.stats = None
+        self.view_handler.update()
 
     def build_ui(self):
         with SinglePageLayout(self.server, full_height=True) as layout:
             with layout.footer.clear() as footer:
                 footer.classes = "text-caption"
                 v3.VSpacer()
-                footer.add_child("Quality ({{quality[0]}}/{{quality[1]}})")
-                v3.VSpacer()
-                footer.add_child("Encoder ({{encoder}})")
+                html.Span(
+                    "Quality ({{quality[0]}}/{{quality[1]}}) - Encoder ({{encoder}})",
+                    v_if="display_mode === 'image'",
+                )
+                html.Span(
+                    "Quantization ({{quantization}}/63) - Codec ({{video_codec}})",
+                    v_else=True,
+                )
                 v3.VSpacer()
                 footer.add_child("{{ stats_display }}")
 
@@ -152,14 +190,34 @@ class ConeApp(TrameApp):
                     variant="outlined",
                     style="max-width: 100px",
                 )
+                with v3.VBtnToggle(
+                    v_model=("display_mode", IMAGE),
+                    mandatory=True,
+                    density="compact",
+                    classes="mx-2",
+                ):
+                    v3.VBtn(text="JPEG", value=IMAGE)
+                    v3.VBtn(text="Video", value=VIDEO)
                 v3.VSpacer()
 
                 v3.VRangeSlider(
+                    v_if=(f"display_mode === '{IMAGE}'",),
                     label="Quality",
                     v_model=("quality", [50, 90]),
                     min=10,
                     max=100,
                     step=5,
+                    hide_details=True,
+                    density="compact",
+                    style="max-width: 300px",
+                )
+                v3.VSlider(
+                    v_else=True,
+                    label="Quantization",
+                    v_model=("quantization", DEFAULT_QUANTIZATION),
+                    min=0,  # high quality
+                    max=63,  # low quality
+                    step=1,
                     hide_details=True,
                     density="compact",
                     style="max-width: 300px",
@@ -181,23 +239,44 @@ class ConeApp(TrameApp):
                     fluid=True,
                     classes="pa-0 fill-height position-relative",
                 ):
-                    view = rca.RemoteControlledArea(
-                        display="image",
+                    image_view = rca.RemoteControlledArea(
+                        v_if=(f"display_mode === '{IMAGE}'",),
+                        display=IMAGE,
                         monitor="10",
                         stats="stats = $event",
                         event_throttle_ms=("500/target_fps",),
                     )
                     # prevent network backup
                     # => seems to only trigger with fps > 140
-                    view.set_drop_frames_pending_network_limit(5)
-
-                    self.view_handler = view.create_view_handler(
+                    image_view.set_drop_frames_pending_network_limit(5)
+                    self.image_view_handler = image_view.create_view_handler(
                         self.render_window,
                         encoder=self.state.encoder,
                     )
+
+                    video_view = rca.RemoteControlledArea(
+                        v_else=True,
+                        display=VIDEO,
+                        monitor="10",
+                        stats="stats = $event",
+                        event_throttle_ms=("500/target_fps",),
+                    )
+                    self.video_view_handler = video_view.create_view_handler(
+                        self.render_window,
+                    )
+
                     with v3.VCard(classes="pa-4 ma-0", style=STATS_STYLES):
                         rca.StatisticsDisplay(
-                            name=view.name,
+                            v_if=(f"display_mode === '{IMAGE}'",),
+                            name=image_view.name,
+                            fps_delta=1.5,
+                            stat_window_size=10,
+                            history_window_size=30,
+                            reset_ms_threshold=100,
+                        )
+                        rca.StatisticsDisplay(
+                            v_else=True,
+                            name=video_view.name,
                             fps_delta=1.5,
                             stat_window_size=10,
                             history_window_size=30,
@@ -211,7 +290,14 @@ class ConeApp(TrameApp):
 
     @change("quality")
     def update_quality(self, quality, **_):
-        self.view_handler.update_quality(*quality)
+        self.image_view_handler.update_quality(*quality)
+
+    @change("quantization")
+    def update_quantization(self, quantization, **_):
+        # No public API yet: reach into the video scheduler's encoder.
+        video_encoder = self.video_view_handler._scheduler._rca_encoder.encoder
+        video_encoder.SetQuantizationParameter(int(quantization))
+        self.video_view_handler.update()
 
     def update_reset_resolution(self):
         self.state.resolution = DEFAULT_RESOLUTION
