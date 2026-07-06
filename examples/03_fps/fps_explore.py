@@ -75,7 +75,7 @@ class ConeApp(TrameApp):
 
         self.server.cli.add_argument("--encoder", default="turbo-jpeg")  # jpeg
         args, _ = self.server.cli.parse_known_args()
-        self.state.encoder = args.encoder
+        self.encoder = args.encoder
         self.state.video_codec = video_codec_label()
         self.state.display_mode = IMAGE
         self.state.stats = None
@@ -251,7 +251,7 @@ class ConeApp(TrameApp):
                     image_view.set_drop_frames_pending_network_limit(5)
                     self.image_view_handler = image_view.create_view_handler(
                         self.render_window,
-                        encoder=self.state.encoder,
+                        encoder=self.encoder,
                     )
 
                     video_view = rca.RemoteControlledArea(
