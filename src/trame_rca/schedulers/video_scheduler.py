@@ -10,7 +10,7 @@ if TYPE_CHECKING:
 
     from trame_rca.rca import VtkRemoteControlledArea
 
-from trame_rca.encoders import RcaVideoEncoder
+from trame_rca.encoders import RcaVideoEncoder, VideoEncoderType
 from trame_rca.rca import window_wrapper
 
 
@@ -33,10 +33,11 @@ class RcaVideoRenderScheduler:
         *,
         push_callback: Callable[[bytes, dict]] | None = None,
         target_fps: float = 30.0,
+        rca_encoder: VideoEncoderType | None = None,
     ):
         self._rca: VtkRemoteControlledArea = window_wrapper(window)
         self._rca_encoder = RcaVideoEncoder(
-            self._rca.render_window, push_callback=self._push
+            self._rca.render_window, push_callback=self._push, rca_encoder=rca_encoder
         )
         self._is_closing = False
         self._render_requested = False
