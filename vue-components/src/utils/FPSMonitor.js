@@ -2,16 +2,20 @@ export class FPSMonitor {
   constructor(
     windowSize = 255,
     windowStatSize = 10,
-    newInteractionThreshold = 1000
+    newInteractionThreshold = 1000,
+    fpsWindowMs = 1000
   ) {
     this.windowSize = windowSize;
     this.windowStatSize = windowStatSize;
     this.newInteractionThreshold = newInteractionThreshold;
+    // Sustained-fps window: count packets received in the last fpsWindowMs.
+    this.fpsWindowMs = fpsWindowMs;
     this.lastTS = 0;
     this.serverTime = [];
     this.clientTimes = [];
     this.packetSizes = [];
     this.statWindow = [];
+    this.fpsWindow = [];
   }
 
   trim() {
@@ -32,7 +36,8 @@ export class FPSMonitor {
     const start = this.statWindow[0];
     const end = this.statWindow[this.statWindow.length - 1];
     const dt = (end - start) / (this.statWindow.length - 1);
-    const avgFps = 1000 / dt;
+    // Sustained fps: number of packets received in the trailing fpsWindowMs.
+    const avgFps = (this.fpsWindow.length * 1000) / this.fpsWindowMs;
     const client = [];
     const server = [];
     const minMax = [0, 0];
@@ -75,6 +80,11 @@ export class FPSMonitor {
     this.packetSizes.push(size);
     this.serverTime.push(timeInMs);
     this.clientTimes.push(ts);
+    // Maintain a trailing window of arrival times for sustained-fps counting.
+    this.fpsWindow.push(ts);
+    while (this.fpsWindow.length && ts - this.fpsWindow[0] > this.fpsWindowMs) {
+      this.fpsWindow.shift();
+    }
     if (ts - this.lastTS < this.newInteractionThreshold) {
       this.statWindow.push(ts);
     } else {
