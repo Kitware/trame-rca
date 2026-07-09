@@ -1,17 +1,14 @@
 import logging
 from time import time_ns
-from typing import Callable
+from typing import Callable, Optional
 
 from vtk_streaming.vtkStreamingCore import (
     VTKPF_IYUV,
-    VTKVC_H264,
-    VTKVC_VP9,
     vtkCompressedVideoPacket,
+    vtkVideoCodecTypeUtilities,
 )
-from vtk_streaming.vtkStreamingEncode import vtkVideoEncoder
-from vtk_streaming.vtkStreamingNvEncode import vtkNvEncoderGL
+from vtk_streaming.vtkStreamingEncode import vtkEncoderFactory, vtkVideoEncoder
 from vtk_streaming.vtkStreamingOpenGL2 import vtkOpenGLVideoFrame
-from vtk_streaming.vtkStreamingVpxEncode import vtkVpxEncoder
 from vtkmodules.util.misc import calldata_type
 from vtkmodules.util.vtkConstants import VTK_OBJECT
 from vtkmodules.vtkCommonCore import vtkUnsignedCharArray
@@ -19,19 +16,46 @@ from vtkmodules.vtkRenderingCore import vtkRenderWindow
 
 logger = logging.getLogger(__name__)
 
+# Backend selection is delegated to vtkEncoderFactory via a single ranked preference string
+# (VTK 9.7 override format): ';' separates keys strongest-to-weakest, ',' separates a key's
+# values strongest-to-weakest. Here: always take hardware when available. Among hardware,
+# prefer H265 > H264 > VP9
+_ENCODER_PREFERENCES = "Hardware=true;Codec=H265,H264,VP9"
 
-def create_vpx_encoder() -> vtkVpxEncoder:
-    encoder = vtkVpxEncoder()
-    encoder.SetCodec(VTKVC_VP9)
-    encoder.SetTargetCPUUsage(9)
-    encoder.SetRowBasedMultiThreading(False)  # crashes if True
+
+def _tune_encoder(encoder: vtkVideoEncoder) -> None:
+    # Backend-specific knobs the base vtkVideoEncoder API does not expose. vtkEncoderFactory
+    # returns the concrete (downcast) encoder, so these setters are available when matched.
+    if encoder.GetClassName() == "vtkVpxEncoder":
+        encoder.SetTargetCPUUsage(9)
+        encoder.SetRowBasedMultiThreading(False)  # crashes if True
+
+
+def create_encoder() -> Optional[vtkVideoEncoder]:
+    vtkEncoderFactory.SetPreferences(_ENCODER_PREFERENCES)
+    encoder = vtkEncoderFactory.CreateEncoder()
+    if encoder is None:
+        return None
+    _tune_encoder(encoder)
+    logger.info("Using %s", encoder.GetClassName())
     return encoder
 
 
-def create_nvenc_encoder() -> vtkNvEncoderGL:
-    encoder = vtkNvEncoderGL()
-    encoder.SetCodec(VTKVC_H264)
-    return encoder
+# Short backend names for a human-readable label; keyed by concrete encoder class.
+_BACKEND_LABELS = {
+    "vtkVideoToolboxEncoder": "VideoToolbox",
+    "vtkNvEncoderGL": "nvenc",
+    "vtkVpxEncoder": "libvpx",
+}
+
+
+def describe_encoder(encoder: Optional[vtkVideoEncoder]) -> str:
+    """Human-readable 'codec (backend)' label, e.g. 'h.265 (VideoToolbox)'."""
+    if encoder is None:
+        return "unavailable"
+    codec = vtkVideoCodecTypeUtilities.ToString(encoder.GetCodec())
+    backend = _BACKEND_LABELS.get(encoder.GetClassName(), encoder.GetClassName())
+    return f"{codec} ({backend})"
 
 
 def encode(
@@ -57,19 +81,15 @@ class RcaVideoEncoder:
         push_callback: Callable[[bytes, dict, int], None],
     ) -> None:
         self._render_window = render_window
-        self.encoder = None
         self.frame = None
         self._push_callback = push_callback
         self._window_size = None
 
-        if vtkNvEncoderGL.CheckAvailability():
-            logger.info("Using H264 through NVENC")
-            self._create_encoder = create_nvenc_encoder
-        else:
-            logger.info("Using VP9 through libvpx")
-            self._create_encoder = create_vpx_encoder
-
-        self.encoder = self._create_encoder()
+        self.encoder = create_encoder()
+        if self.encoder is None:
+            raise RuntimeError(
+                "No suitable video encoder is available on this machine."
+            )
         self._initialize(render_window)
 
     def _set_size(self, render_window_size: tuple[int]):
@@ -102,7 +122,7 @@ class RcaVideoEncoder:
     @calldata_type(VTK_OBJECT)
     def _on_encoded_chunk(
         self,
-        _encoder: vtkNvEncoderGL | vtkVpxEncoder,
+        _encoder: vtkVideoEncoder,
         _event: str,
         video_packet: vtkCompressedVideoPacket,
     ) -> None:
