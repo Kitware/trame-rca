@@ -1,6 +1,60 @@
 # CHANGELOG
 
 
+## v2.7.0 (2026-07-11)
+
+### Bug Fixes
+
+- **decoder**: Config decoder with optimizeForLatency: true
+  ([`f8f86e4`](https://github.com/Kitware/trame-rca/commit/f8f86e4c727058d249ee006d519fa833e9d2913e))
+
+Without it, browser H.264 decoder (multithreaded FFmpeg path or HW) holds one frame for potential
+  reordering before emitting output. VP9 path doesn't hit this and that's why lag appears only with
+  nvenc/H264.
+
+- **stats**: Measure sustained fps over a trailing 1s window
+  ([`4139033`](https://github.com/Kitware/trame-rca/commit/4139033de4601aaae1b151ec0c43694fbf047f2e))
+
+The gauge computed fps from the mean inter-arrival of the last 10 packets, which is biased toward
+  delivery bursts and reads far above the target rate. Count packets received in the trailing 1000ms
+  instead, independent of the burst/reset window used by the graph.
+
+### Chores
+
+- **changelog**: Fix spelling
+  ([`6d8fbd3`](https://github.com/Kitware/trame-rca/commit/6d8fbd3f3c74736bf07151b5305f0408e225fb16))
+
+- **deps**: Bump vtk-streaming for nvenc fix
+  ([`82197d9`](https://github.com/Kitware/trame-rca/commit/82197d90d12837c0daf3ead07e38908e8cd85bbe))
+
+- **example**: Move encoder off of state
+  ([`7026c45`](https://github.com/Kitware/trame-rca/commit/7026c45e7ccbea0b3134dd957c08c128d8caff40))
+
+- **example**: Show VideoToolbox codec in fps_explore label
+  ([`1054774`](https://github.com/Kitware/trame-rca/commit/105477436c091681698f67707b6354f53812ac3b))
+
+Mirror RcaVideoEncoder selection so the footer reports "h265 (VideoToolbox)" on macOS when
+  available.
+
+- **examples**: Toggle JPEG/video decoder in fps_explore
+  ([`06b46af`](https://github.com/Kitware/trame-rca/commit/06b46af4d974f75b827d6a2c556b123ca111f667))
+
+Two RCA widgets on one render window, switched by v_if: image display with JPEG encoder and
+  video-decoder display with automatic codec selection (NVENC H264 or libvpx VP9). Video mode maps
+  the quality slider to encoder quantization (0 high - 63 low); footer shows active codec and stats.
+
+- **vtk-streaming**: Bump version to 0.4.0 for apple encoders
+  ([`505fc27`](https://github.com/Kitware/trame-rca/commit/505fc2798db35b51e44402bf4f203521766f9e37))
+
+### Features
+
+- **encoder**: Add VideoToolbox H265 encoder for macOS
+  ([`5002c84`](https://github.com/Kitware/trame-rca/commit/5002c84faa97ac78aa8a075f4595333579375eae))
+
+Prefer Apple's hardware VideoToolbox H265 encoder on darwin, falling back to NVENC (H264) and then
+  libvpx (VP9) as before.
+
+
 ## v2.6.3 (2026-07-03)
 
 ### Bug Fixes
@@ -8,8 +62,8 @@
 - **video_rca**: Bump vtk-streaming to 0.3.4 for vpx encoder fix
   ([`f1ab553`](https://github.com/Kitware/trame-rca/commit/f1ab553d28049c728694cbaf58efce6fd5c39f38))
 
-- just call set_size if window size is different from last encode instead of recreating encoder and
-  frame from scratch
+- just call set_size if window size is different from last encode isntead of recreating encoder and
+  frame from sratch
 
 
 ## v2.6.2 (2026-07-02)
