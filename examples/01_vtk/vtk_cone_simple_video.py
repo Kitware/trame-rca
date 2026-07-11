@@ -2,7 +2,7 @@ import vtkmodules.vtkRenderingOpenGL2  # noqa
 from trame.app import TrameApp
 from trame.decorators import change
 from trame.widgets import rca
-from trame.widgets import vuetify3 as v3
+from trame.widgets import html, vuetify3 as v3
 from trame.ui.vuetify3 import SinglePageLayout
 
 from vtkmodules.vtkFiltersSources import vtkConeSource
@@ -25,6 +25,8 @@ class ConeApp(TrameApp):
         self.render_window = self.setup_vtk()
 
         self._build_ui()
+        self.state.video_codec = "unavailable"
+        self._update_video_codec_label()
 
     def setup_vtk(self):
         renderer = vtkRenderer()
@@ -54,6 +56,17 @@ class ConeApp(TrameApp):
         self.cone_source.SetResolution(resolution)
         self.view_handler.update()
 
+    def _update_video_codec_label(self):
+        # Reflect the encoder the video scheduler actually selected,
+        try:
+            from trame_rca.encoders.video_encoder import describe_encoder
+        except ImportError:
+            self.state.video_codec = "unavailable"
+            return
+        scheduler = getattr(self.view_handler, "_scheduler", None)
+        rca_encoder = getattr(scheduler, "_rca_encoder", None)
+        self.state.video_codec = describe_encoder(getattr(rca_encoder, "encoder", None))
+
     def update_reset_resolution(self):
         self.state.resolution = DEFAULT_RESOLUTION
 
@@ -73,6 +86,11 @@ class ConeApp(TrameApp):
                 )
 
                 v3.VBtn(icon="mdi-undo-variant", click=self.update_reset_resolution)
+            with layout.footer.clear() as footer:
+                footer.classes = "text-caption"
+                v3.VSpacer()
+                html.Span("Codec: {{video_codec}}")
+                v3.VSpacer()
 
             with layout.content:
                 view = rca.RemoteControlledArea(display="video-decoder")

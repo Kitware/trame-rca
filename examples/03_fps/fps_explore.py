@@ -57,18 +57,6 @@ def time_now_ms() -> int:
     return int(time.time_ns() / 1000000)
 
 
-def video_codec_label() -> str:
-    """Codec selection is automatic (see RcaVideoEncoder.__init__)."""
-    try:
-        from vtk_streaming.vtkStreamingNvEncode import vtkNvEncoderGL
-
-        if vtkNvEncoderGL.CheckAvailability():
-            return "h264 (nvenc)"
-        return "vp9 (libvpx)"
-    except ImportError:
-        return "unavailable"
-
-
 class ConeApp(TrameApp):
     def __init__(self, server=None):
         super().__init__(server)
@@ -76,7 +64,7 @@ class ConeApp(TrameApp):
         self.server.cli.add_argument("--encoder", default="turbo-jpeg")  # jpeg
         args, _ = self.server.cli.parse_known_args()
         self.encoder = args.encoder
-        self.state.video_codec = video_codec_label()
+        self.state.video_codec = "unavailable"
         self.state.display_mode = IMAGE
         self.state.stats = None
         self.state.stats_display = ""
@@ -84,12 +72,26 @@ class ConeApp(TrameApp):
 
         self.render_window, self.cone_source = self.setup_vtk()
         self.build_ui()
+        # Label the codec from the encoder actually selected by the video scheduler
+        # (codec selection is automatic; see RcaVideoEncoder / vtkEncoderFactory).
+        self._update_video_codec_label()
 
     @property
     def view_handler(self):
         if self.state.display_mode == VIDEO:
             return self.video_view_handler
         return self.image_view_handler
+
+    def _update_video_codec_label(self):
+        # Reflect the encoder the video scheduler actually selected,
+        try:
+            from trame_rca.encoders.video_encoder import describe_encoder
+        except ImportError:
+            self.state.video_codec = "unavailable"
+            return
+        scheduler = getattr(self.video_view_handler, "_scheduler", None)
+        rca_encoder = getattr(scheduler, "_rca_encoder", None)
+        self.state.video_codec = describe_encoder(getattr(rca_encoder, "encoder", None))
 
     def setup_vtk(self):
         renderer = vtkRenderer()
