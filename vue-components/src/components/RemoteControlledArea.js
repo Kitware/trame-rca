@@ -101,9 +101,7 @@ export default {
       _getScreenEventPositionFor,
       currentRenderer: 1,
     });
-    const interactorStyle = vtkInteractorStyleRemoteMouse.newInstance({
-      throttleDelay: 0, // Use main EventThrottle
-    });
+    const interactorStyle = vtkInteractorStyleRemoteMouse.newInstance();
     windowInteractor.setInteractorStyle(interactorStyle);
 
     // Mouse

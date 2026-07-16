@@ -141,23 +141,12 @@ function vtkInteractorStyleRemoteMouse(publicAPI, model) {
 
   //-------------------------------------------------------------------------
   publicAPI.handleMouseWheel = (callData) => {
-    let needToSend = true;
-    if (model.wheelThrottleDelay) {
-      const ts = Date.now();
-      needToSend = model.wheelThrottleDelay < ts - model.wheelLastThrottleTime;
-      if (needToSend) {
-        model.wheelLastThrottleTime = ts;
-      }
-    }
-
-    if (needToSend) {
-      publicAPI.invokeRemoteWheelEvent({
-        type: 'MouseWheel',
-        ...createRemoteEvent(callData),
-        spinY: callData.spinY,
-      });
-      publicAPI.invokeInteractionEvent(INTERACTION_EVENT);
-    }
+    publicAPI.invokeRemoteWheelEvent({
+      type: 'MouseWheel',
+      ...createRemoteEvent(callData),
+      spinY: callData.spinY,
+    });
+    publicAPI.invokeInteractionEvent(INTERACTION_EVENT);
   };
 
   //-------------------------------------------------------------------------
@@ -172,16 +161,12 @@ function vtkInteractorStyleRemoteMouse(publicAPI, model) {
 
   //-------------------------------------------------------------------------
   publicAPI.handleMouseMove = (callData) => {
-    const ts = Date.now();
-    const needToSend = model.throttleDelay < ts - model.lastThrottleTime;
     if (
-      needToSend &&
-      (model.sendMouseMove ||
-        model.buttonLeft ||
-        model.buttonMiddle ||
-        model.buttonRight)
+      model.sendMouseMove ||
+      model.buttonLeft ||
+      model.buttonMiddle ||
+      model.buttonRight
     ) {
-      model.lastThrottleTime = ts;
       publicAPI.invokeRemoteMouseEvent({
         type: 'MouseMove',
         ...createRemoteEvent(callData),
@@ -360,10 +345,6 @@ const DEFAULT_VALUES = {
   buttonMiddle: 0,
   buttonRight: 0,
   sendMouseMove: false,
-  throttleDelay: 33.3, // 33.3 millisecond <=> 30 events/second
-  lastThrottleTime: 0,
-  wheelThrottleDelay: 0,
-  wheelLastThrottleTime: 0,
   // remoteEventAddOn: null,
 };
 
@@ -374,12 +355,7 @@ export function extend(publicAPI, model, initialValues = {}) {
 
   // Inheritance
   vtkInteractorStyle.extend(publicAPI, model, initialValues);
-  macro.setGet(publicAPI, model, [
-    'sendMouseMove',
-    'remoteEventAddOn',
-    'throttleDelay',
-    'wheelThrottleDelay',
-  ]);
+  macro.setGet(publicAPI, model, ['sendMouseMove', 'remoteEventAddOn']);
   macro.event(publicAPI, model, 'RemoteMouseEvent');
   macro.event(publicAPI, model, 'RemoteWheelEvent');
   macro.event(publicAPI, model, 'RemoteGestureEvent');
