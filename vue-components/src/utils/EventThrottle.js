@@ -47,7 +47,15 @@ export class EventThrottle {
     this.processing = false;
     this.throttleTimeMs = throttleTimeMs;
     this.processCallback = processCallback;
-    this.eventKeysToIgnore = new Set(['x', 'y']);
+    this.eventKeysToIgnore = new Set([
+      'x',
+      'y',
+      // For gesture events:
+      'positions',
+      'rotation',
+      'translation',
+      'factor',
+    ]);
   }
 
   /**
