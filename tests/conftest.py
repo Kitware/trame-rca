@@ -38,6 +38,7 @@ def a_render_window():
 
     render_window_interactor = vtkRenderWindowInteractor()
     render_window_interactor.SetRenderWindow(render_window)
+    render_window_interactor.Initialize()
 
     cone_source = vtkConeSource()
     mapper = vtkPolyDataMapper()

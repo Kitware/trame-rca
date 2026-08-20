@@ -9,7 +9,6 @@ import pytest
 from trame_rca.encoders import RcaVideoEncoder
 from trame_rca.schedulers import RcaVideoRenderScheduler
 
-
 if os.environ.get("CI") is not None and sys.platform != "linux":
     pytest.skip(
         "Rendering tests are disabled on CI for non Linux platforms.",
@@ -30,6 +29,23 @@ def test_a_view_can_be_encoded_to_format(a_render_window, tmpdir):
     img_bytes = args[0]
     assert isinstance(img_bytes, (bytes, bytearray))
     assert len(img_bytes) > 0
+
+
+@pytest.mark.asyncio
+async def test_reset_does_not_duplicate_encoded_chunk_observer(a_render_window):
+    a_mock_push = MagicMock()
+    rca_encoder = RcaVideoEncoder(a_render_window, push_callback=a_mock_push)
+
+    for _ in range(5):
+        rca_encoder.reset(a_render_window)
+
+    rca_encoder.encode(a_render_window)
+
+    try:
+        await asyncio.sleep(1)
+        assert a_mock_push.call_count == 1
+    finally:
+        rca_encoder.release()
 
 
 @pytest.mark.asyncio

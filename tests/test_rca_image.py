@@ -62,7 +62,7 @@ async def test_after_request_render_pushes_render_followed_by_still_render(
         a_render_window,
         push_callback=a_mock_push,
         target_fps=20,
-        interactive_quality=0,
+        interactive_quality=1,
         still_quality=100,
         rca_encoder=encoder,
     )
@@ -71,7 +71,7 @@ async def test_after_request_render_pushes_render_followed_by_still_render(
         await scheduler.async_schedule_render()
         await asyncio.sleep(2)
         assert a_mock_push.call_count == 2
-        assert a_mock_push.call_args_list[0].args[1]["quality"] == 0
+        assert a_mock_push.call_args_list[0].args[1]["quality"] == 1
         assert a_mock_push.call_args_list[1].args[1]["quality"] == 100
     finally:
         await scheduler.close()
@@ -88,7 +88,7 @@ async def test_when_schedule_render_called_before_still_render_keeps_animating(
         a_render_window,
         push_callback=a_mock_push,
         target_fps=20,
-        interactive_quality=0,
+        interactive_quality=1,
         rca_encoder=encoder,
     )
 
@@ -115,7 +115,7 @@ async def test_if_no_render_is_scheduled_doesnt_push(
         a_render_window,
         push_callback=a_mock_push,
         target_fps=20,
-        interactive_quality=0,
+        interactive_quality=1,
         rca_encoder=encoder,
     )
 
@@ -137,7 +137,7 @@ async def test_groups_close_request_render_together(
         a_render_window,
         push_callback=a_mock_push,
         target_fps=20,
-        interactive_quality=0,
+        interactive_quality=1,
         rca_encoder=encoder,
     )
 
@@ -156,6 +156,6 @@ def test_scheduler_is_compatible_with_string_encoder_format(encoder, a_render_wi
         a_render_window,
         push_callback=MagicMock(),
         target_fps=20,
-        interactive_quality=0,
+        interactive_quality=1,
         rca_encoder=encoder,
     )
