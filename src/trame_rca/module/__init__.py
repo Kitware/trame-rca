@@ -5,10 +5,8 @@ from trame_rca import __version__
 from ..protocol import StreamManager
 
 serve_path = str(Path(__file__).with_name("serve").resolve())
-serve = {f"__trame_rca_{__version__}": serve_path}
-scripts = [f"__trame_rca_{__version__}/trame-rca.umd.js"]
-styles = [f"__trame_rca_{__version__}/style.css"]
-vue_use = ["trame_rca"]
+BASE_URL = f"__trame_rca_{__version__}"
+serve = {BASE_URL: serve_path}
 
 
 def setup(server, **kwargs):
@@ -19,3 +17,24 @@ def setup(server, **kwargs):
         root_protocol.registerLinkProtocol(protocol_instance)
 
     server.add_protocol_to_configure(configure_protocol)
+
+    client_type = "vue2"
+    if hasattr(server, "client_type"):
+        client_type = server.client_type
+
+    if client_type == "react":
+        server.enable_module(
+            {
+                "scripts": [f"{BASE_URL}/trame-rca-react.umd.cjs"],
+                "styles": [f"{BASE_URL}/trame-rca-react.css"],
+                "react_use": ["trame_rca_react"],
+            }
+        )
+    else:
+        server.enable_module(
+            {
+                "scripts": [f"{BASE_URL}/trame-rca.umd.js"],
+                "styles": [f"{BASE_URL}/style.css"],
+                "vue_use": ["trame_rca"],
+            }
+        )
