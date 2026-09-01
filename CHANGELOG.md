@@ -1,6 +1,16 @@
 # CHANGELOG
 
 
+## v2.9.1 (2026-09-01)
+
+### Bug Fixes
+
+- Fix performances
+  ([`63c6f9d`](https://github.com/Kitware/trame-rca/commit/63c6f9d5c7e1cc42c3c32e893020f19cd920d7e9))
+
+- Fix VideoEncoder leak on browser refresh - Fix image scheduler performances
+
+
 ## v2.9.0 (2026-08-21)
 
 ### Features
