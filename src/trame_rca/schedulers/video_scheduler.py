@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from asyncio import sleep
+import asyncio
+from asyncio import Event, sleep
 from typing import TYPE_CHECKING, Callable
 
 from trame.app import asynchronous
@@ -35,17 +36,15 @@ class RcaVideoRenderScheduler:
         target_fps: float = 30.0,
     ):
         self._rca: VtkRemoteControlledArea = window_wrapper(window)
+        self._push_callback = push_callback
         self._rca_encoder = RcaVideoEncoder(
             self._rca.render_window, push_callback=self._push
         )
         self._is_closing = False
-        self._render_requested = False
+        self._request_event = Event()
 
         self._target_fps = target_fps
         self._render_task = asynchronous.create_task(self._render())
-
-        if push_callback is not None:
-            self.set_push_callback(push_callback)
 
     @property
     def rca(self) -> VtkRemoteControlledArea:
@@ -67,29 +66,31 @@ class RcaVideoRenderScheduler:
         return 1.0 / self._target_fps
 
     async def close(self):
-        # Set closing flag to true and push one final render to make sure every task will have a chance to be canceled.
         if self._is_closing:
             return
 
         self._is_closing = True
-        await sleep(1)
-        await self._render_task
+        self._request_event.set()
+        self._render_task.cancel()
+        await asyncio.gather(self._render_task, return_exceptions=True)
         self._rca_encoder.release()
 
     def schedule_render(self):
-        self._render_requested = True
+        self._request_event.set()
 
     async def _render(self):
         while not self._is_closing:
-            if self._render_requested:
-                self._render_requested = False
-                render_window = self._rca.render_window
-                self._rca_encoder.encode(render_window)
+            await self._request_event.wait()
+            if self._is_closing:
+                break
 
+            self._request_event.clear()
+            self._rca_encoder.encode(self._rca.render_window)
             await sleep(self._target_period_s)
 
     def _push(self, content: bytes, meta: dict, _m_time: int):
-        self._push_callback(content, meta)
+        if self._push_callback is not None:
+            self._push_callback(content, meta)
 
     def reset(self):
-        self._rca_encoder._reset(self._rca.render_window)
+        self._rca_encoder.reset(self._rca.render_window)

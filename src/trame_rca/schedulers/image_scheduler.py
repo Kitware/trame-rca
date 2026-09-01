@@ -1,12 +1,13 @@
 from __future__ import annotations
 
+import asyncio
 import os
-from asyncio import Queue, sleep, wrap_future
-from typing import TYPE_CHECKING, Callable
-from time import time_ns
-
+from asyncio import Event, Queue, sleep
 from concurrent.futures import Executor
 from concurrent.futures.thread import ThreadPoolExecutor
+from time import time_ns
+from typing import TYPE_CHECKING, Callable
+
 from trame.app import asynchronous
 
 if TYPE_CHECKING:
@@ -14,7 +15,6 @@ if TYPE_CHECKING:
 
 from trame_rca.encoders import RcaImageEncoder
 from trame_rca.rca import RemoteControlledAreaProtocol, window_wrapper
-
 
 ENCODING_POOL = ThreadPoolExecutor(max(4, os.cpu_count()))
 
@@ -50,18 +50,18 @@ class RcaImageRenderScheduler:
         self._push_callback = push_callback
 
         self._target_fps = target_fps
-        self._interactive_quality = interactive_quality
-        self._still_quality = still_quality
+        self._interactive_quality = max(1, min(interactive_quality, 100))
+        self._still_quality = max(1, min(still_quality, 100))
 
         self._n_period_until_still_render = 5
         self._last_push_time_ms = int(time_ns() / 1000000)
-        self._request_render_queue = Queue()
-        self._render_quality_queue = Queue()
-        self._push_queue = Queue()
 
         self._is_closing = False
         self._encode_pool: Executor = encode_pool or ENCODING_POOL
-        self._render_quality_task = asynchronous.create_task(self._render_quality())
+
+        self._request_event = Event()
+        self._push_queue = Queue()
+
         self._render_task = asynchronous.create_task(self._render())
         self._push_task = asynchronous.create_task(self._push())
 
@@ -94,50 +94,60 @@ class RcaImageRenderScheduler:
             return
 
         self._is_closing = True
-        await self.async_schedule_render()
-        await sleep(1)
-        for task in [self._render_task, self._render_quality_task, self._push_task]:
-            await task
+        self._request_event.set()
+        self._render_task.cancel()
+        self._push_task.cancel()
+        await asyncio.gather(self._render_task, self._push_task, return_exceptions=True)
 
     def schedule_render(self):
-        asynchronous.create_task(self.async_schedule_render())
+        self._request_event.set()
 
     async def async_schedule_render(self):
-        await self._request_render_queue.put(True)
-
-    async def _render_quality(self):
-        while not self._is_closing:
-            await self._request_render_queue.get()
-            await self._render_quality_queue.put(self._interactive_quality)
-            await self._schedule_still_render()
-
-    async def _schedule_still_render(self):
-        await self._empty_request_render_queue()
-        for _ in range(self._n_period_until_still_render):
-            await sleep(self._target_period_s)
-            if not self._request_render_queue.empty():
-                return
-        await self._render_quality_queue.put(self._still_quality)
-
-    async def _empty_request_render_queue(self):
-        while not self._request_render_queue.empty():
-            await self._request_render_queue.get()
+        self.schedule_render()
 
     async def _render(self):
         while not self._is_closing:
-            quality = await self._render_quality_queue.get()
-            np_img, cols, rows = self._rca.img_cols_rows
-            await self._push_queue.put(
-                wrap_future(
-                    self._encode_pool.submit(
-                        self._rca_encoder.encode,
-                        np_img,
-                        cols,
-                        rows,
-                        quality,
-                    )
-                )
-            )
+            await self._request_event.wait()
+            if self._is_closing:
+                break
+
+            self._request_event.clear()
+
+            interactive = self._interactive_quality
+            still = self._still_quality
+
+            self._render_frame(interactive)
+
+            if interactive == still:
+                await sleep(self._target_period_s)
+                continue
+
+            if await self._wait_for_still():
+                self._render_frame(still)
+
+    async def _wait_for_still(self):
+        self._request_event.clear()
+
+        for _ in range(self._n_period_until_still_render):
+            await sleep(self._target_period_s)
+            if self._request_event.is_set():
+                return False
+
+        return True
+
+    def _render_frame(self, quality):
+        np_img, cols, rows = self._rca.img_cols_rows
+
+        loop = asyncio.get_running_loop()
+        future = loop.run_in_executor(
+            self._encode_pool,
+            self._rca_encoder.encode,
+            np_img,
+            cols,
+            rows,
+            quality,
+        )
+        self._push_queue.put_nowait(future)
 
     async def _push(self):
         while not self._is_closing:

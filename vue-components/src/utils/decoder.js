@@ -4,6 +4,7 @@ const CHUNK = 3;
 const FLUSH = 4;
 const RESET = 5;
 const CLOSE = 6;
+const CLOSED = 7;
 
 export const WORKER_CONTENT = `
 
@@ -70,12 +71,17 @@ onmessage = async function({ data: msg }) {
       this.decoder.reset();
       break;
     case 6: // close
-      // flush before close() to avoid currepoted state.
+      // flush before close() to avoid corrupted state.
       // calling postMessage(flush)
       //         postMessage(close) is not enough since the second
-      // abort the first before it finishes.
-      await this.decoder.flush();
-      this.decoder.close();
+      // aborts the first before it finishes.
+      try {
+        await this.decoder.flush();
+        this.decoder.close();
+      } catch (e) {
+        reportError(e);
+      }
+      postMessage({ action: 7 }); // closed
       break;
   }
 }
@@ -138,10 +144,25 @@ export class DecoderWorker {
   }
 
   terminate() {
+    if (!this.worker) {
+      return;
+    }
     this.worker.postMessage({ action: CLOSE });
-    // don't terminate immediately we need to wail for the video encoder to finish flushing
-    // not sure how to achieve this ...
-    //this.worker.terminate();
-    //this.worker = null;
+    let done = false;
+    const finish = () => {
+      if (done) {
+        return;
+      }
+      done = true;
+      this.worker.terminate();
+      this.worker = null;
+    };
+    this.worker.onmessage = (e) => {
+      if (e.data && e.data.action === CLOSED) {
+        finish();
+      }
+    };
+    // Fallback in case the worker never acknowledges the close.
+    setTimeout(finish, 1000);
   }
 }

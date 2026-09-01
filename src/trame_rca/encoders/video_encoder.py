@@ -90,6 +90,9 @@ class RcaVideoEncoder:
             raise RuntimeError(
                 "No suitable video encoder is available on this machine."
             )
+        self.encoder.AddObserver(
+            vtkVideoEncoder.EncodedVideoChunkEvent, self._on_encoded_chunk
+        )
         self._initialize(render_window)
 
     def _set_size(self, render_window_size: tuple[int]):
@@ -110,12 +113,9 @@ class RcaVideoEncoder:
 
         self._set_size(render_window.GetSize())
         self.encoder.Initialize()
-        self.encoder.AddObserver(
-            vtkVideoEncoder.EncodedVideoChunkEvent, self._on_encoded_chunk
-        )
         self.encoder.ForceIFrameOn()
 
-    def _reset(self, render_window: vtkRenderWindow) -> None:
+    def reset(self, render_window: vtkRenderWindow) -> None:
         self.release()
         self._initialize(render_window)
 
