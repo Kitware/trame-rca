@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v2.10.1 (2026-09-09)
+
+### Bug Fixes
+
+- **react**: Allow trame>=4
+  ([`b4712ed`](https://github.com/Kitware/trame-rca/commit/b4712ed870f64878cc56c56a09d3acf3dbf3be2b))
+
+
 ## v2.10.0 (2026-09-09)
 
 ### Features
