@@ -1,6 +1,24 @@
 # CHANGELOG
 
 
+## v2.10.0 (2026-09-09)
+
+### Features
+
+- Support trame client_type="react"
+  ([`076ca89`](https://github.com/Kitware/trame-rca/commit/076ca898119fdfaac45f357cb5d27c834590524f))
+
+Add react-components/ (TypeScript) porting all nine components for the native React client that
+  ships with trame-client: RemoteControlledArea (vtk.js interactor -> trame.rca.event/size RPCs),
+  DisplayArea and the image/media-source/video-decoder/raw-image display areas
+  (trame.rca.topic.stream subscribers), ImageStream + ImageRegion (react context replaces vue
+  provide/inject) and StatisticsDisplay (plain markup header instead of the vuetify icons, which the
+  react client does not carry). src/utils/ is shared verbatim with vue-components.
+
+The module setup selects the client bundle by server.client_type (trame-rca.umd.js + vue_use, or
+  trame-rca-react.umd.cjs + react_use); CI builds both bundles.
+
+
 ## v2.9.1 (2026-09-01)
 
 ### Bug Fixes
