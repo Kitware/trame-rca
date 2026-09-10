@@ -1,24 +1,5 @@
 import { watchEffect, ref, inject, onBeforeUnmount, provide } from 'vue';
-
-class ImageFrame {
-  constructor(refImg) {
-    this.refImg = refImg;
-    this.img = new Image();
-    this.url = '';
-    this.blob = null;
-
-    this.img.addEventListener('load', () => {
-      this.refImg.value = this.img;
-    });
-  }
-
-  update(type, content) {
-    window.URL.revokeObjectURL(this.url);
-    this.blob = new Blob([content], { type });
-    this.url = URL.createObjectURL(this.blob);
-    this.img.src = this.url;
-  }
-}
+import { ImageStreamController } from 'trame-rca-js';
 
 export default {
   props: {
@@ -34,46 +15,29 @@ export default {
   setup(props) {
     const trame = inject('trame');
     const image = ref(null);
-    const frames = [];
-    const subscriptions = [];
-    let nextFrameIndex = 0;
 
-    watchEffect(() => {
-      while (frames.length < props.poolSize) {
-        frames.push(new ImageFrame(image));
-      }
-      while (frames.length > props.poolSize) {
-        frames.pop();
-      }
+    const controller = new ImageStreamController({
+      source: { trame },
+      name: props.name,
+      poolSize: props.poolSize,
+      onImage: (img) => {
+        image.value = img;
+      },
     });
 
-    function nextFrame() {
-      nextFrameIndex = (nextFrameIndex + 1) % frames.length;
-      return frames[nextFrameIndex];
-    }
+    watchEffect(() => {
+      controller.poolSize = props.poolSize;
+      controller.updatePoolSize();
+    });
 
-    function onImage([{ name, meta, content }]) {
-      if (props.name === name) {
-        nextFrame().update(meta.type, content);
-      }
-    }
+    watchEffect(() => {
+      controller.setName(props.name);
+    });
 
-    if (trame) {
-      subscriptions.push(
-        trame.client
-          .getConnection()
-          .getSession()
-          .subscribe('trame.rca.topic.stream', onImage)
-      );
-    }
+    controller.mount();
 
     onBeforeUnmount(() => {
-      while (subscriptions.length) {
-        const subscription = subscriptions.pop();
-        if (trame) {
-          trame.client.getConnection().getSession().unsubscribe(subscription);
-        }
-      }
+      controller.unmount();
     });
 
     provide('rcaImageStream', image);

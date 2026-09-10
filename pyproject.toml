@@ -37,8 +37,8 @@ dev = [
     "pytest-playwright",
     "pytest-xprocess",
     "ruff",
-    "trame-vuetify",
-    "trame>=3.6",
+    "trame>=4",
+    "trame-vuetify>=3.2.6",
 ]
 avif = [
     "pillow-avif-plugin",

@@ -1,6 +1,6 @@
 import type { ComponentType } from "react";
 
-import "./style.css";
+import "trame-rca-js/style.css";
 
 import DisplayArea from "./components/DisplayArea";
 import ImageDisplayArea from "./components/ImageDisplayArea";

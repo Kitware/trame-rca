@@ -1,4 +1,4 @@
-import { DecoderWorker } from '../utils/decoder';
+import { VideoDecoderDisplayAreaController } from 'trame-rca-js';
 
 export default {
   props: {
@@ -11,6 +11,11 @@ export default {
       default: 'anonymous',
     },
   },
+  watch: {
+    name(v) {
+      this.controller?.setName(v);
+    },
+  },
   data() {
     return {
       isSupported: 'VideoFrame' in window,
@@ -19,58 +24,19 @@ export default {
   expose: [''],
   methods: {
     cleanup() {
-      if (this.worker) {
-        this.worker.terminate();
-      }
-
-      // unsub trame.rca.topic.stream
-      if (this.wslinkSubscription) {
-        if (this.trame) {
-          this.trame.client
-            .getConnection()
-            .getSession()
-            .unsubscribe(this.wslinkSubscription);
-          this.wslinkSubscription = null;
-        }
-      }
+      this.controller?.unmount();
     },
   },
   mounted() {
-    this.worker = new DecoderWorker();
-    if (this.isSupported) {
-      const canvas = this.$el.querySelector('.js-canvas');
-      this.worker.bindCanvas(canvas);
-
-      this.onChunkAvailable = async ([{ name, meta, content }]) => {
-        // when we do not get octet-stream or valid codec, terminate worker.
-        if (
-          !meta.type.includes('application/octet-stream') ||
-          !meta.codec.length ||
-          meta.codec.includes('unknown')
-        ) {
-          return;
-        }
-
-        if (this.name === name && meta.codec.length) {
-          this.worker.setContentType(meta.codec, meta.w, meta.h);
-          const data = content.buffer
-            ? content
-            : new Uint8Array(await content.arrayBuffer());
-          this.worker.pushChunk(meta.st, meta.key, data);
-        }
-      };
-
-      if (this.trame) {
-        this.trame.client
-          .getConnection()
-          .getSession()
-          .call('trame.rca.reset', [this.name]);
-        this.wslinkSubscription = this.trame.client
-          .getConnection()
-          .getSession()
-          .subscribe('trame.rca.topic.stream', this.onChunkAvailable);
-      }
-    }
+    this.controller = new VideoDecoderDisplayAreaController({
+      source: this,
+      name: this.name,
+      onSupported: (value) => {
+        this.isSupported = value;
+      },
+    });
+    const canvas = this.$el.querySelector('.js-canvas');
+    this.controller.mount(canvas);
   },
   // support both vue2 and vue3 unmount callbacks
   beforeUnmount() {

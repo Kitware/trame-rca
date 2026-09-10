@@ -1,6 +1,4 @@
-import { FPSMonitor } from '../utils/FPSMonitor';
-
-const UNITS = ['B/s', 'KB/s', 'MB/s'];
+import { StatisticsDisplayController } from 'trame-rca-js';
 
 export default {
   props: {
@@ -22,7 +20,7 @@ export default {
     },
     resetMsThreshold: {
       type: Number,
-      default: 255,
+      default: 1000,
     },
     wsLinkTopic: {
       type: String,
@@ -47,128 +45,55 @@ export default {
     };
   },
   watch: {
+    name(v) {
+      this.controller?.setName(v);
+    },
+    fpsDelta(v) {
+      this.controller?.setFpsDelta(v);
+    },
     statWindowSize(v) {
-      this.monitor.windowStatSize = v;
+      this.controller?.setStatWindowSize(v);
     },
     historyWindowSize(v) {
-      this.monitor.windowSize = v;
+      this.controller?.setHistoryWindowSize(v);
     },
     resetMsThreshold(v) {
-      this.monitor.newInteractionThreshold = v;
+      this.controller?.setResetMsThreshold(v);
     },
   },
   expose: ['sizeUnit'],
   methods: {
     sizeUnit(v) {
-      let value = v;
-      for (let i = 0; i < 3; i++) {
-        if (value < 1000) {
-          return `${value.toFixed(1)} ${UNITS[i]}`;
-        }
-        value /= 1000;
-      }
+      return this.controller?.sizeUnit(v);
     },
     cleanup() {
-      this.observer.unobserve(this.$el);
-      if (this.wslinkSubscription) {
-        if (this.trame) {
-          this.trame.client
-            .getConnection()
-            .getSession()
-            .unsubscribe(this.wslinkSubscription);
-          this.wslinkSubscription = null;
-        }
-      }
+      this.controller?.unmount();
     },
-    draw(client, server, clientColor = '#1DE9B688', serverColor = '#EF9A9A') {
-      if (!this.$el) {
-        return;
-      }
-      const { cw: width, ch: height } = this;
-      const canvas = this.$el.querySelector('.js-canvas');
-      const ctx = canvas.getContext('2d');
-
-      const centerHeight = Math.floor(height * 0.5 + 0.5);
-      const yScale = centerHeight / (1001 * this.fpsDelta);
-      const xScale = width / (client.length - 2);
-
-      ctx.clearRect(0, 0, width, height);
-
-      // ref
-      ctx.strokeStyle = 'black';
-      ctx.beginPath();
-      ctx.moveTo(0, centerHeight);
-      ctx.lineTo(width, centerHeight);
-      ctx.stroke();
-      ctx.strokeStyle = '#eee';
-      for (let i = 0; i < this.fpsDelta; i++) {
-        ctx.beginPath();
-        ctx.moveTo(0, centerHeight + 1000 * (i + 1) * yScale);
-        ctx.lineTo(width, centerHeight + 1000 * (i + 1) * yScale);
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.moveTo(0, centerHeight - 1000 * (i + 1) * yScale);
-        ctx.lineTo(width, centerHeight - 1000 * (i + 1) * yScale);
-        ctx.stroke();
-      }
-
-      // client
-      ctx.strokeStyle = clientColor;
-      ctx.lineWidth = 8;
-      ctx.beginPath();
-      ctx.moveTo(0, centerHeight - yScale * client[1]);
-      for (let i = 2; i < client.length; i++) {
-        ctx.lineTo((i - 1) * xScale, centerHeight - yScale * client[i]);
-      }
-      ctx.stroke();
-
-      // server
-      ctx.strokeStyle = serverColor;
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(0, centerHeight - yScale * server[1]);
-      for (let i = 2; i < server.length; i++) {
-        ctx.lineTo((i - 1) * xScale, centerHeight - yScale * server[i]);
-      }
-      ctx.stroke();
-    },
-  },
-  created() {
-    this.monitor = new FPSMonitor(this.historyWindowSize, this.statWindowSize);
-
-    // Display stream
-    this.wslinkSubscription = null;
-    this.onStreamPacket = ([v]) => {
-      const { name, serverTime, contentSize } = this.packetDecorator(v);
-      if (this.name === name) {
-        const stats = this.monitor.addEntry(serverTime, contentSize);
-        if (stats) {
-          this.avg = stats.avgFps;
-          this.totalSize = stats.totalSize;
-          this.delta = 1000 / (stats.minMax[1] - stats.minMax[0]);
-          this.draw(stats.client, stats.server);
-        }
-      }
-    };
-    if (this.trame) {
-      this.wslinkSubscription = this.trame.client
-        .getConnection()
-        .getSession()
-        .subscribe(this.wsLinkTopic, this.onStreamPacket);
-    }
-
-    // Size management
-    this.observer = new ResizeObserver(() => {
-      if (!this.$el) {
-        return;
-      }
-      const { width, height } = this.$el.getBoundingClientRect();
-      this.cw = width;
-      this.ch = height;
-    });
   },
   mounted() {
-    this.observer.observe(this.$el);
+    this.controller = new StatisticsDisplayController({
+      source: this,
+      name: this.name,
+      fpsDelta: this.fpsDelta,
+      statWindowSize: this.statWindowSize,
+      historyWindowSize: this.historyWindowSize,
+      resetMsThreshold: this.resetMsThreshold,
+      wsLinkTopic: this.wsLinkTopic,
+      packetDecorator: this.packetDecorator,
+      onStats: ({ avg, totalSize, delta }) => {
+        this.avg = avg;
+        this.totalSize = totalSize;
+        this.delta = delta;
+      },
+      onResize: ({ cw, ch }) => {
+        this.cw = cw;
+        this.ch = ch;
+      },
+    });
+    this.controller.mount({
+      root: this.$el,
+      canvas: this.$el.querySelector('.js-canvas'),
+    });
   },
   // support both vue2 and vue3 unmount callbacks
   beforeDestroy() {

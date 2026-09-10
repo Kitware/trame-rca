@@ -8,7 +8,8 @@ import pytest_asyncio
 from playwright.async_api import async_playwright, expect
 from trame.app import TrameApp, get_server
 from trame.app.testing import enable_testing
-from trame.ui.vuetify3 import SinglePageLayout
+from trame.decorators import change
+from trame.ui.html import DivLayout
 from trame_client.widgets.html import Div
 from vtkmodules.vtkFiltersSources import vtkConeSource
 from vtkmodules.vtkInteractionStyle import vtkInteractorStyleTrackballCamera
@@ -20,7 +21,7 @@ from vtkmodules.vtkRenderingCore import (
     vtkRenderWindowInteractor,
 )
 
-from trame.widgets import vuetify3 as v3
+from trame.widgets import client, html, react
 from trame_rca.rca import VtkRemoteControlledArea
 from trame_rca.widgets.rca import RemoteControlledArea
 
@@ -44,9 +45,11 @@ class MockedVtkRemoteControlledArea(VtkRemoteControlledArea):
 
 
 class RcaInteractionApp(TrameApp):
-    def __init__(self, server=None):
-        super().__init__(server)
-        self.render_window = self._create_render_window()
+    DEFAULT_CONE_RESOLUTION = 6
+
+    def __init__(self, server=None, client_type="vue3"):
+        super().__init__(server, client_type=client_type)
+        self.render_window, self.cone_source = self._create_render_window()
         self.rca_window = MockedVtkRemoteControlledArea(self.render_window)
         self._build_ui()
 
@@ -69,42 +72,59 @@ class RcaInteractionApp(TrameApp):
         actor.SetMapper(mapper)
         renderer.AddActor(actor)
         renderer.ResetCamera()
-        return render_window
+        return render_window, source
 
     def _build_ui(self):
-        with SinglePageLayout(self.server, full_height=True) as layout:
-            layout.title.set_text("RCA slider interaction regression")
-            with layout.content:
-                with v3.VContainer(fluid=True, classes="pa-0 fill-height"):
-                    with Div(
-                        style="position: relative; width: 100%; height: 100%; overflow: hidden;",
-                    ):
-                        view = RemoteControlledArea(
-                            display="image",
-                            image_style=({},),
-                            name="slider-test",
-                            send_mouse_move=True,
-                            style="position: relative; width: 100%; height: 100%;",
-                        )
-                        with Div(
-                            classes="slice-slider-gutter",
-                            style="position: absolute; bottom: 0; left: 0; background-color: transparent; width: 100%;",
-                        ):
-                            v3.VSlider(
-                                v_model=("slider_value", 50),
-                                min=0,
-                                max=100,
-                                step=1,
-                                hide_details=True,
-                                classes="slice-slider",
-                            )
-                    view.create_view_handler(self.rca_window, encoder="png")
+        with DivLayout(self.server):
+            client.Style(
+                "html, body { margin: 0; height: 100%; }"
+                ".rca-test-root { position: relative; width: 100%; height: 100vh; overflow: hidden; }"
+                ".rca-test-gutter "
+                "{ position: absolute; bottom: 0; left: 0; width: 100%; background-color: transparent; }"
+                ".rca-test-slider { width: 100%; }"
+            )
+            with Div(classes="rca-test-root"):
+                view = RemoteControlledArea(
+                    display="image",
+                    name="slider-test",
+                    send_mouse_move=True,
+                )
+                with Div(classes="rca-test-gutter"):
+                    self._build_resolution_slider()
+                self.view_handler = view.create_view_handler(
+                    self.rca_window, encoder="png"
+                )
+
+    def _build_resolution_slider(self):
+        slider = {
+            "type": "range",
+            "classes": "rca-test-slider",
+            "min": 3,
+            "max": 60,
+            "step": 1,
+        }
+        if self.server.client_type == "react":
+            html.Input(
+                **slider,
+                value=react.Bind("resolution", resolution=self.DEFAULT_CONE_RESOLUTION),
+                on_change=react.Callback("resolution = Number($event.target.value)"),
+            )
+        else:
+            html.Input(**slider, v_model=("resolution", self.DEFAULT_CONE_RESOLUTION))
+
+    @change("resolution")
+    def update_cone(self, resolution, **_):
+        self.cone_source.SetResolution(int(resolution))
+        self.view_handler.update()
 
 
-@pytest_asyncio.fixture
-async def rca_interaction_app(unused_tcp_port):
-    server = get_server(f"test_rca_interaction_{uuid.uuid4()}", client_type="vue3")
-    app = RcaInteractionApp(server)
+@pytest_asyncio.fixture(params=["vue3", "react"])
+async def rca_interaction_app(request, unused_tcp_port):
+    client_type = request.param
+    server = get_server(
+        f"test_rca_interaction_{client_type}_{uuid.uuid4()}", client_type=client_type
+    )
+    app = RcaInteractionApp(server, client_type=client_type)
     enable_testing(server)
     server.start(port=unused_tcp_port, exec_mode="task")
     try:
@@ -139,6 +159,8 @@ async def test_rca_view_is_interactive(rca_interaction_app):
 
         assert initial_img_url != new_img_url
 
+        await browser.close()
+
 
 @pytest.mark.asyncio
 async def test_slider_drag_does_not_reach_rca(rca_interaction_app):
@@ -149,7 +171,7 @@ async def test_slider_drag_does_not_reach_rca(rca_interaction_app):
 
         image = page.locator("img.image-display-area")
         await expect(image).to_be_visible()
-        slider = page.locator(".v-slider")
+        slider = page.locator(".rca-test-slider")
         await expect(slider).to_be_visible()
 
         slider_box = await slider.bounding_box()
@@ -157,18 +179,27 @@ async def test_slider_drag_does_not_reach_rca(rca_interaction_app):
         assert slider_box is not None
         assert image_box is not None
 
-        # Start on the slider, then enter the RCA while pressed.
-        start_x = slider_box["x"] + slider_box["width"] / 2
-        start_y = slider_box["y"] + slider_box["height"] / 2
-        await page.mouse.move(start_x, start_y)
+        # Start on the slider (off-center so the drag changes its value), then
+        # enter the RCA while pressed. The slider must drive the cone resolution
+        # while the press itself must not be captured by the RCA.
+        initial_resolution = rca_interaction_app.state.resolution
+        await page.mouse.move(
+            slider_box["x"] + slider_box["width"] * 0.2,
+            slider_box["y"] + slider_box["height"] / 2,
+        )
         await page.mouse.down()
         await page.mouse.move(
             image_box["x"] + image_box["width"] / 2,
             image_box["y"] + image_box["height"] / 2,
+            steps=10,
         )
         await page.mouse.up()
         await page.wait_for_timeout(100)
 
+        assert int(rca_interaction_app.state.resolution) != initial_resolution
+        assert rca_interaction_app.cone_source.GetResolution() == int(
+            rca_interaction_app.state.resolution
+        )
         assert rca_interaction_app.rca_window.left_press_event_mock.call_count == 0
 
         await browser.close()
