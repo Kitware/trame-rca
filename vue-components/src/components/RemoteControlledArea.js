@@ -1,6 +1,4 @@
-import macro from '@kitware/vtk.js/macro';
-import vtkRenderWindowInteractor from '@kitware/vtk.js/Rendering/Core/RenderWindowInteractor';
-import vtkInteractorStyleRemoteMouse from '../utils/interactorStyle';
+import { RemoteControlledAreaController } from 'trame-rca-js';
 
 const {
   inject,
@@ -9,12 +7,8 @@ const {
   toRefs,
   onMounted,
   onBeforeUnmount,
-  watch,
   watchEffect,
 } = window.Vue;
-import { FunctionThrottle, EventThrottle } from '../utils/EventThrottle';
-
-const RESOLVED_PROMISED = Promise.resolve(true);
 
 export default {
   props: {
@@ -55,195 +49,39 @@ export default {
     const rootElem = ref(null);
     const trame = inject('trame');
 
-    // Resizing throttle
-    const throttleSize = new FunctionThrottle(
-      _pushSize,
-      props.resizeThrottleMs
-    );
-    watch(props.resizeThrottleMs, (v) => (throttleSize.delay = v));
+    const controller = new RemoteControlledAreaController({
+      source: { trame },
+      name: props.name,
+      origin: props.origin,
+      sendMouseMove: props.sendMouseMove,
+      eventThrottleMs: props.eventThrottleMs,
+      resizeThrottleMs: props.resizeThrottleMs,
+    });
 
-    // Event throttle
-    const throttle = new EventThrottle((event) => {
-      return trame.client
-        .getConnection()
-        .getSession()
-        .call('trame.rca.event', [props.name, props.origin, event]);
-    }, props.eventThrottleMs);
     watchEffect(() => {
-      throttle.throttleTimeMs = Number(props.eventThrottleMs);
+      controller.setResizeThrottleMs(props.resizeThrottleMs);
     });
-
-    // Mouse management
-    let currentOffset = [0, 0];
-
-    // Size management
-    let currentSizeUpdateEvent = {
-      w: 10,
-      h: 10,
-      p: Math.max(1, window.devicePixelRatio),
-    };
-    let readySizeUpdate = true;
-    let pendingSizeUpdatePromise = RESOLVED_PROMISED;
-    let pendingSizeUpdateCount = 0;
-
-    // -----------------------------------------------------------------------
-    // VTK input handling
-    // -----------------------------------------------------------------------
-    function _getScreenEventPositionFor(source) {
-      return {
-        x: source.clientX - currentOffset[0],
-        y: currentSizeUpdateEvent.h - source.clientY + currentOffset[1],
-        z: 0,
-      };
-    }
-
-    const windowInteractor = vtkRenderWindowInteractor.newInstance({
-      _getScreenEventPositionFor,
-      currentRenderer: 1,
-    });
-    const interactorStyle = vtkInteractorStyleRemoteMouse.newInstance();
-    windowInteractor.setInteractorStyle(interactorStyle);
-
-    // Mouse
     watchEffect(() => {
-      interactorStyle.setSendMouseMove(props.sendMouseMove);
+      controller.setEventThrottleMs(props.eventThrottleMs);
     });
-    interactorStyle.onRemoteMouseEvent((e) => {
-      sendEvent(
-        Object.assign(
-          { w: currentSizeUpdateEvent.w, h: currentSizeUpdateEvent.h },
-          e
-        )
-      );
+    watchEffect(() => {
+      controller.setSendMouseMove(props.sendMouseMove);
     });
-    // Wheel
-    interactorStyle.onRemoteWheelEvent((e) => {
-      sendEvent(
-        Object.assign(
-          { w: currentSizeUpdateEvent.w, h: currentSizeUpdateEvent.h },
-          e
-        )
-      );
+    watchEffect(() => {
+      controller.setName(props.name);
     });
-    // Gesture
-    interactorStyle.onRemoteGestureEvent((e) => {
-      sendEvent(
-        Object.assign(
-          { w: currentSizeUpdateEvent.w, h: currentSizeUpdateEvent.h },
-          e
-        )
-      );
-    });
-    // Keyboard
-    interactorStyle.onRemoteKeyEvent((e) => {
-      sendEvent(
-        Object.assign(
-          { w: currentSizeUpdateEvent.w, h: currentSizeUpdateEvent.h },
-          e
-        )
-      );
-    });
-    // Tap / LongTap
-    interactorStyle.onRemoteTapEvent((e) => {
-      sendEvent(
-        Object.assign(
-          { w: currentSizeUpdateEvent.w, h: currentSizeUpdateEvent.h },
-          e
-        )
-      );
-    });
-    interactorStyle.onRemoteLongTapEvent((e) => {
-      sendEvent(
-        Object.assign(
-          { w: currentSizeUpdateEvent.w, h: currentSizeUpdateEvent.h },
-          e
-        )
-      );
-    });
-    // Interaction Events
-    interactorStyle.onStartInteractionEvent((e) => {
-      sendEvent(e);
-    });
-    interactorStyle.onEndInteractionEvent((e) => {
-      sendEvent(e);
+    watchEffect(() => {
+      controller.setOrigin(props.origin);
     });
 
-    // -----------------------------------------------------------------------
-
-    function sendEvent(event) {
-      if (trame) {
-        throttle.sendEvent(event);
-      }
-    }
-
-    function finallySizeUpdate() {
-      readySizeUpdate = true;
-      if (pendingSizeUpdateCount) {
-        pendingSizeUpdateCount = 0;
-        pushSize();
-      }
-    }
-
-    const observer = new ResizeObserver(
-      macro.debounce(() => {
-        if (!rootElem.value) {
-          return;
-        }
-        const rect = rootElem.value.getBoundingClientRect();
-        const { top, left } = rect;
-        currentSizeUpdateEvent.w = rect.width;
-        currentSizeUpdateEvent.h = rect.height;
-        currentSizeUpdateEvent.p = Math.max(1, window.devicePixelRatio);
-        currentOffset = [left, top];
-        pushSize();
-      }, 100)
-    );
-
-    function pushSize(addOn) {
-      throttleSize.run(addOn);
-    }
-
-    function _pushSize(addOn) {
-      if (trame) {
-        if (readySizeUpdate) {
-          readySizeUpdate = false;
-          if (addOn) {
-            pendingSizeUpdatePromise = trame.client
-              .getConnection()
-              .getSession()
-              .call('trame.rca.size', [
-                props.name,
-                props.origin,
-                { ...currentSizeUpdateEvent, ...addOn },
-              ]);
-          } else {
-            pendingSizeUpdatePromise = trame.client
-              .getConnection()
-              .getSession()
-              .call('trame.rca.size', [
-                props.name,
-                props.origin,
-                currentSizeUpdateEvent,
-              ]);
-          }
-          pendingSizeUpdatePromise.finally(finallySizeUpdate);
-        } else {
-          pendingSizeUpdateCount++;
-        }
-      }
-    }
-
-    provide('rcaPushSize', pushSize);
+    provide('rcaPushSize', (addOn) => controller.pushSize(addOn));
 
     onMounted(() => {
-      observer.observe(rootElem.value);
-      windowInteractor.initialize();
-      windowInteractor.bindEvents(rootElem.value);
+      controller.mount(rootElem.value);
     });
 
     onBeforeUnmount(() => {
-      observer.unobserve(rootElem.value);
-      windowInteractor.unbindEvents(rootElem.value);
+      controller.unmount();
     });
 
     return { rootElem, ...toRefs(props) };

@@ -1,43 +1,4 @@
-import { FPSMonitor } from '../utils/FPSMonitor';
-
-const SUPPORTED_IMAGE_TYPES = {
-  'image/apng': 1,
-  'image/avif': 1,
-  'image/gif': 1,
-  'image/jpeg': 1,
-  'image/png': 1,
-  'image/svg+xml': 1,
-  'image/webp': 1,
-};
-class ImageFrame {
-  constructor(vueComponent) {
-    this.vueComponent = vueComponent;
-    this.img = new Image();
-    this.pending = false;
-    this.url = '';
-    this.blob = null;
-    this.img.addEventListener('error', () => {
-      this.pending = false;
-    });
-    this.img.addEventListener('load', () => {
-      this.pending = false;
-      this.vueComponent.displayURL = this.url;
-      this.vueComponent.hasContent = true;
-    });
-  }
-
-  update(type, content) {
-    if (this.pending) {
-      return false;
-    }
-    this.pending = true;
-    window.URL.revokeObjectURL(this.url);
-    this.blob = new Blob([content], { type });
-    this.url = URL.createObjectURL(this.blob);
-    this.img.src = this.url;
-    return true;
-  }
-}
+import { ImageDisplayAreaController } from 'trame-rca-js';
 
 export default {
   props: {
@@ -63,11 +24,16 @@ export default {
     },
   },
   watch: {
-    poolSize() {
-      this.updatePoolSize();
+    name(v) {
+      this.controller?.setName(v);
     },
-    monitor() {
-      this.updateMonitorWindow();
+    poolSize(v) {
+      this.controller.poolSize = v;
+      this.controller.updatePoolSize();
+    },
+    monitor(v) {
+      this.controller.monitor = v;
+      this.controller.updateMonitorWindow();
     },
   },
   data() {
@@ -79,75 +45,30 @@ export default {
   expose: ['resetContent', 'updatePoolSize'],
   methods: {
     resetContent() {
-      this.hasContent = false;
+      this.controller?.resetContent();
     },
     updatePoolSize() {
-      while (this.frames.length < this.poolSize) {
-        this.frames.push(new ImageFrame(this));
-      }
-      while (this.frames.length > this.poolSize) {
-        this.frames.pop();
-      }
+      this.controller?.updatePoolSize();
     },
     cleanup() {
-      if (this.wslinkSubscription) {
-        if (this.trame) {
-          this.trame.client
-            .getConnection()
-            .getSession()
-            .unsubscribe(this.wslinkSubscription);
-          this.wslinkSubscription = null;
-        }
-      }
+      this.controller?.unmount();
     },
   },
-  updateMonitorWindow() {
-    const bufferSize = Math.max(10, this.monitor);
-    this.fpsMonitor.windowSize = bufferSize;
-    this.fpsMonitor.windowStatSize = bufferSize;
-  },
   created() {
-    // Monitoring
-    this.fpsMonitor = new FPSMonitor(10, 10);
-    // Image decoding
-    this.frames = [];
-    this.nextFrameIndex = 0;
-    this.updatePoolSize();
-
-    // Display stream
-    this.wslinkSubscription = null;
-    this.onImage = ([{ name, meta, content }]) => {
-      if (this.name === name) {
-        if (SUPPORTED_IMAGE_TYPES[meta.type]) {
-          const nextIdx = (this.nextFrameIndex + 1) % this.frames.length;
-          const frame = this.frames[nextIdx];
-          if (frame.update(meta.type, content)) {
-            this.nextFrameIndex = nextIdx;
-            if (this.monitor) {
-              const serverTime = meta.st;
-              const contentSize = content.length;
-              const stats = this.fpsMonitor.addEntry(serverTime, contentSize);
-              if (stats) {
-                const { avgFps, totalSize } = stats;
-                this.$emit('stats', {
-                  fps: Math.round(avgFps),
-                  bps: Math.floor(totalSize),
-                  st: serverTime,
-                });
-              }
-            }
-          }
-        } else {
-          this.hasContent = false;
-        }
-      }
-    };
-    if (this.trame) {
-      this.wslinkSubscription = this.trame.client
-        .getConnection()
-        .getSession()
-        .subscribe('trame.rca.topic.stream', this.onImage);
-    }
+    this.controller = new ImageDisplayAreaController({
+      source: this,
+      name: this.name,
+      poolSize: this.poolSize,
+      monitor: this.monitor,
+      onStats: (stats) => this.$emit('stats', stats),
+      onDisplayUrl: (url) => {
+        this.displayURL = url;
+      },
+      onHasContent: (value) => {
+        this.hasContent = value;
+      },
+    });
+    this.controller.mount();
   },
   // support both vue2 and vue3 cleanup functions
   beforeDestroy() {

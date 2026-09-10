@@ -26,13 +26,24 @@ trame-rca is made available under the Apache Software License.
 Development
 -----------------------------------------------------------
 
-Build and install the Vue components
+The client-side code is split into a framework-agnostic core (``js-components``)
+and Vue/React adapters that depend on it. Install and build the core first, then
+the adapter(s) you need.
 
 .. code-block:: console
 
-    cd vue-components
+    cd js-components
+    npm i
+
+    cd ../vue-components
     npm i
     npm run build
+
+    # optional React adapter
+    cd ../react-components
+    npm i
+    npm run build
+
     cd -
 
 Install the component

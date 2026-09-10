@@ -6,7 +6,7 @@ import warnings
 from typing import TYPE_CHECKING
 from weakref import WeakKeyDictionary, WeakValueDictionary
 
-from trame_client.widgets.core import AbstractElement
+from trame_client.widgets.core import VUE_CLIENT_TYPES, AbstractElement
 
 if TYPE_CHECKING:
     from vtkmodules.vtkRenderingCore import vtkRenderWindow
@@ -330,6 +330,8 @@ class ImageRegion(HtmlElement):
             ("send_mouse_click", "sendMouseClick"),
             ("event_throttle_ms", "eventThrottleMs"),
         ]
-        self._event_names += [
-            "size",
-        ]
+        # Vue emits a `size` event, React exposes `onSize`
+        if self.server.client_type in VUE_CLIENT_TYPES:
+            self._event_names += ["size"]
+        else:
+            self._event_names += [("size", "onSize")]

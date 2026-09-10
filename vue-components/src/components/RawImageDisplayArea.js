@@ -1,3 +1,5 @@
+import { RawImageDisplayAreaController } from 'trame-rca-js';
+
 export default {
   props: {
     name: {
@@ -13,6 +15,11 @@ export default {
       default: () => ({ width: '100%' }),
     },
   },
+  watch: {
+    name(v) {
+      this.controller?.setName(v);
+    },
+  },
   data() {
     return {
       hasContent: false,
@@ -20,62 +27,18 @@ export default {
   },
   methods: {
     cleanup() {
-      // unsub trame.rca.topic.stream
-      if (this.wslinkSubscription) {
-        if (this.trame) {
-          this.trame.client
-            .getConnection()
-            .getSession()
-            .unsubscribe(this.wslinkSubscription);
-          this.wslinkSubscription = null;
-        }
-      }
+      this.controller?.unmount();
     },
   },
   mounted() {
-    this.wslinkSubscription = null;
-    const canvas = this.$el;
-    const ctx = canvas.getContext('2d');
-    this.onImage = async ([{ name, meta, content }]) => {
-      if (this.name === name) {
-        if (meta.type.includes('image/rgb24')) {
-          const data = content.buffer
-            ? content
-            : new Uint8Array(await content.arrayBuffer());
-          canvas.width = meta.w;
-          canvas.height = meta.h;
-          const imageData = ctx.createImageData(meta.w, meta.h);
-          const pixels = imageData.data;
-          let iRGB = 0;
-          let iRGBA = 0;
-          while (iRGBA < pixels.length) {
-            pixels[iRGBA++] = data[iRGB++];
-            pixels[iRGBA++] = data[iRGB++];
-            pixels[iRGBA++] = data[iRGB++];
-            pixels[iRGBA++] = 255;
-          }
-          ctx.putImageData(imageData, 0, 0);
-          this.hasContent = true;
-        } else if (meta.type.includes('image/rgba32')) {
-          const data = new Uint8ClampedArray(
-            content.buffer ? content : await content.arrayBuffer()
-          );
-          canvas.width = meta.w;
-          canvas.height = meta.h;
-          const imageData = new ImageData(data, meta.w, meta.h);
-          ctx.putImageData(imageData, 0, 0);
-          this.hasContent = true;
-        } else {
-          this.hasContent = false;
-        }
-      }
-    };
-    if (this.trame) {
-      this.wslinkSubscription = this.trame.client
-        .getConnection()
-        .getSession()
-        .subscribe('trame.rca.topic.stream', this.onImage);
-    }
+    this.controller = new RawImageDisplayAreaController({
+      source: this,
+      name: this.name,
+      onHasContent: (value) => {
+        this.hasContent = value;
+      },
+    });
+    this.controller.mount(this.$el);
   },
   // support both vue2 and vue3 unmount callbacks
   beforeDestroy() {
@@ -87,5 +50,5 @@ export default {
   inject: ['trame'],
   template: `
     <canvas class="raw-image-display-area js-canvas" :style="imageStyle" v-show="hasContent"></canvas>
-  `
+  `,
 };

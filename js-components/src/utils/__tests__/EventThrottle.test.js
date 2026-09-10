@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { EventThrottle } from '../EventThrottle'; // adjust path as needed
+import { EventThrottle } from '../EventThrottle.js';
 
 describe('throttle.compressEvents', () => {
   const throttle = new EventThrottle(null, 50);

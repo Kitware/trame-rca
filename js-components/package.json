@@ -1,0 +1,32 @@
+{
+  "name": "trame-rca-js",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Framework-agnostic core shared by the trame-rca Vue and React components",
+  "type": "module",
+  "main": "src/index.js",
+  "module": "src/index.js",
+  "types": "src/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.d.ts",
+      "import": "./src/index.js",
+      "default": "./src/index.js"
+    },
+    "./style.css": "./src/style.css",
+    "./utils/*": "./src/utils/*",
+    "./media/*": "./src/media/*",
+    "./controllers/*": "./src/controllers/*"
+  },
+  "scripts": {
+    "lint": "eslint src --ext .js",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@kitware/vtk.js": "^36.14.0"
+  },
+  "devDependencies": {
+    "eslint": "^8.57.1",
+    "vitest": "^1.0.0"
+  }
+}

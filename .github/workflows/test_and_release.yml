@@ -58,6 +58,11 @@ jobs:
         with:
           node-version: 24
 
+      - name: Install JS Components
+        run: |
+          cd js-components
+          npm i
+
       - name: Build Vue Components
         run: |
           cd vue-components
@@ -80,7 +85,7 @@ jobs:
           CI: true
 
   vitest:
-    name: Vitest (Vue Unit Tests)
+    name: Vitest (JS Core Unit Tests)
     runs-on: ubuntu-latest
 
     steps:
@@ -94,13 +99,18 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          cd vue-components
+          cd js-components
           npm install
 
       - name: Run Vitest
         run: |
-          cd vue-components
+          cd js-components
           npm run test
+
+      - name: Run ESLint
+        run: |
+          cd js-components
+          npm run lint
 
   test-npm-build:
     runs-on: ubuntu-latest
@@ -113,6 +123,11 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: 24
+
+      - name: Install JS Components
+        run: |
+          cd js-components
+          npm i
 
       - name: Build Vue Components
         run: |
@@ -147,6 +162,11 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: 24
+
+      - name: Install JS Components
+        run: |
+          cd js-components
+          npm i
 
       - name: Build Vue Components
         run: |

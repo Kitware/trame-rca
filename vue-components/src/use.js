@@ -1,4 +1,4 @@
-import "./style.css";
+import 'trame-rca-js/style.css';
 import components from './components';
 
 export function install(Vue) {
