@@ -51,6 +51,24 @@ class RcaViewAdapter:
             self._scheduler.update_quality(interactive, still)
 
     @property
+    def scale_factor(self) -> float:
+        """Effective scale factor considering scale, pixel ratio and max pixel count"""
+        if self._current_size is None:
+            return self._scale
+
+        base_factor = self._current_size[2] * self._scale
+
+        if self._max_pixel_count > 0:
+            width = int(self._current_size[0] * base_factor)
+            height = int(self._current_size[1] * base_factor)
+            total = width * height
+            if total > self._max_pixel_count:
+                rescale = math.sqrt(self._max_pixel_count / total)
+                return base_factor * rescale
+
+        return base_factor
+
+    @property
     def target_fps(self) -> float:
         return self._scheduler.target_fps
 
@@ -82,20 +100,12 @@ class RcaViewAdapter:
     def image_size(self):
         if self._current_size is None:
             return (300, 300)
-        size_with_scale = (
-            int(self._current_size[0] * self._current_size[2] * self._scale),
-            int(self._current_size[1] * self._current_size[2] * self._scale),
+
+        factor = self.scale_factor
+        return (
+            int(self._current_size[0] * factor),
+            int(self._current_size[1] * factor),
         )
-        if self._max_pixel_count:
-            total = size_with_scale[0] * size_with_scale[1]
-            if total > self._max_pixel_count:
-                # not perfect but close enough
-                rescale = math.sqrt(self._max_pixel_count / total)
-                return (
-                    int(size_with_scale[0] * rescale),
-                    int(size_with_scale[1] * rescale),
-                )
-        return size_with_scale
 
     @property
     def scale(self):
@@ -119,25 +129,14 @@ class RcaViewAdapter:
     def set_streamer(self, stream_manager):
         self.streamer = stream_manager
 
-    def update_size(self, origin, size):
+    def update_size(self, _origin, size):
         # Resize to ten pixel min to avoid rendering problems
         width = max(10, int(size.get("w", 300)))
         height = max(10, int(size.get("h", 300)))
         pixel_ratio = size.get("p", 1)
         self._current_size = (width, height, pixel_ratio)
-        width = int(width * pixel_ratio * self._scale)
-        height = int(height * pixel_ratio * self._scale)
 
-        # Handle count cap
-        if self._max_pixel_count:
-            total = width * height
-            if total > self._max_pixel_count:
-                # not perfect but close enough
-                rescale = math.sqrt(self._max_pixel_count / total)
-                width = int(width * rescale)
-                height = int(height * rescale)
-
-        self._rca.process_resize_event(width, height)
+        self._rca.process_resize_event(*self.image_size)
         self._scheduler.schedule_render()
 
     def reset(self):
@@ -182,9 +181,33 @@ class RcaViewAdapter:
 
         return True
 
+    def _scale_event(self, event):
+        scale_factor = self.scale_factor
+        if scale_factor == 1:
+            return event
+
+        for key in ("x", "y", "h", "w"):
+            if key in event:
+                event[key] = int(event[key] * scale_factor)
+
+        if "translation" in event and isinstance(event["translation"], (list, tuple)):
+            event["translation"] = [
+                int(val * scale_factor) for val in event["translation"]
+            ]
+
+        if isinstance(event.get("positions"), dict):
+            for pos in event["positions"].values():
+                for key in ("x", "y"):
+                    if key in pos:
+                        pos[key] = int(pos[key] * scale_factor)
+        return event
+
     def on_interaction(self, _, event):
         if self.do_discard_extra_release_event(event):
             return
+
+        event = self._scale_event(event)
+
         self._rca.process_interaction_event(event)
         if self._do_render_on_interaction:
             self._scheduler.schedule_render()
