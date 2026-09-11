@@ -1,4 +1,4 @@
-.. |pypi_download| image:: https://img.shields.io/pypi/dm/trame-rca
+.. |pypi_download| image:: https://kitware.github.io/trame/downloads/trame-rca.svg
 
 =============================================
 Remote Controlled Area |pypi_download|
