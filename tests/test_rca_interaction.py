@@ -10,9 +10,12 @@ from trame.app import TrameApp, get_server
 from trame.app.testing import enable_testing
 from trame.decorators import change
 from trame.ui.html import DivLayout
-from trame_client.widgets.html import Div
 from vtkmodules.vtkFiltersSources import vtkConeSource
 from vtkmodules.vtkInteractionStyle import vtkInteractorStyleTrackballCamera
+from vtkmodules.vtkInteractionWidgets import (
+    vtkDistanceRepresentation2D,
+    vtkDistanceWidget,
+)
 from vtkmodules.vtkRenderingCore import (
     vtkActor,
     vtkPolyDataMapper,
@@ -39,7 +42,6 @@ class MockedVtkRemoteControlledArea(VtkRemoteControlledArea):
 
     def process_interaction_event(self, event):
         if event.get("type") == "LeftButtonPress":
-            print(event)
             self.left_press_event_mock(event)
         super().process_interaction_event(event)
 
@@ -49,7 +51,10 @@ class RcaInteractionApp(TrameApp):
 
     def __init__(self, server=None, client_type="vue3"):
         super().__init__(server, client_type=client_type)
-        self.render_window, self.cone_source = self._create_render_window()
+        self.render_window, self.cone_source, self.distance_widget = (
+            self._create_render_window()
+        )
+
         self.rca_window = MockedVtkRemoteControlledArea(self.render_window)
         self._build_ui()
 
@@ -72,7 +77,13 @@ class RcaInteractionApp(TrameApp):
         actor.SetMapper(mapper)
         renderer.AddActor(actor)
         renderer.ResetCamera()
-        return render_window, source
+
+        distance_widget_rep = vtkDistanceRepresentation2D()
+        distance_widget = vtkDistanceWidget()
+        distance_widget.SetInteractor(interactor)
+        distance_widget.SetRepresentation(distance_widget_rep)
+
+        return render_window, source, distance_widget
 
     def _build_ui(self):
         with DivLayout(self.server):
@@ -83,14 +94,19 @@ class RcaInteractionApp(TrameApp):
                 "{ position: absolute; bottom: 0; left: 0; width: 100%; background-color: transparent; }"
                 ".rca-test-slider { width: 100%; }"
             )
-            with Div(classes="rca-test-root"):
+            with html.Div(classes="rca-test-root"):
                 view = RemoteControlledArea(
                     display="image",
                     name="slider-test",
                     send_mouse_move=True,
                 )
-                with Div(classes="rca-test-gutter"):
+                with html.Div(classes="rca-test-gutter"):
                     self._build_resolution_slider()
+                    self.state.distance_widget = False
+                    html.Button(
+                        "Distance Widget", click="distance_widget = !distance_widget;"
+                    )
+
                 self.view_handler = view.create_view_handler(
                     self.rca_window, encoder="png"
                 )
@@ -117,6 +133,11 @@ class RcaInteractionApp(TrameApp):
         self.cone_source.SetResolution(int(resolution))
         self.view_handler.update()
 
+    @change("distance_widget")
+    def toggle_distance_widget(self, distance_widget, **_):
+        self.distance_widget.SetEnabled(distance_widget)
+        self.view_handler.update()
+
 
 @pytest_asyncio.fixture(params=["vue3", "react"])
 async def rca_interaction_app(request, unused_tcp_port):
@@ -135,7 +156,7 @@ async def rca_interaction_app(request, unused_tcp_port):
 
 
 @pytest.mark.asyncio
-async def test_rca_view_is_interactive(rca_interaction_app):
+async def test_rca_view_is_interactive(rca_interaction_app: RcaInteractionApp):
     async with async_playwright() as p:
         browser = await p.chromium.launch()
         page = await browser.new_page()
@@ -163,7 +184,7 @@ async def test_rca_view_is_interactive(rca_interaction_app):
 
 
 @pytest.mark.asyncio
-async def test_slider_drag_does_not_reach_rca(rca_interaction_app):
+async def test_slider_drag_does_not_reach_rca(rca_interaction_app: RcaInteractionApp):
     async with async_playwright() as p:
         browser = await p.chromium.launch()
         page = await browser.new_page()
@@ -206,7 +227,9 @@ async def test_slider_drag_does_not_reach_rca(rca_interaction_app):
 
 
 @pytest.mark.asyncio
-async def test_rca_drag_outside_slider_reaches_rca(rca_interaction_app):
+async def test_rca_drag_outside_slider_reaches_rca(
+    rca_interaction_app: RcaInteractionApp,
+):
     async with async_playwright() as p:
         browser = await p.chromium.launch()
         page = await browser.new_page()
@@ -224,6 +247,59 @@ async def test_rca_drag_outside_slider_reaches_rca(rca_interaction_app):
         )
         await page.wait_for_timeout(100)
         assert rca_interaction_app.rca_window.left_press_event_mock.call_count == 1
+
+        await browser.close()
+
+
+@pytest.mark.asyncio
+async def test_distance_widget_interaction_with_rca_scaling(
+    rca_interaction_app: RcaInteractionApp,
+):
+    async with async_playwright() as p:
+        browser = await p.chromium.launch()
+        page = await browser.new_page()
+        await page.goto(f"http://127.0.0.1:{rca_interaction_app.server.port}/")
+
+        image = page.locator("img.image-display-area")
+        rca = page.locator(".remote-controlled-area")
+        await expect(image).to_be_visible()
+        rca_box = await rca.bounding_box()
+        assert rca_box is not None
+
+        rca_interaction_app.distance_widget.On()
+        y = rca_box["y"] + rca_box["height"] * 0.5
+        x0 = rca_box["x"] + rca_box["width"] * 0.25
+        x0_distance = (
+            rca_interaction_app.distance_widget.GetRepresentation().GetDistance()
+        )
+
+        x1 = rca_box["x"] + rca_box["width"] * 0.5
+
+        await page.mouse.click(x0, y)
+        await page.mouse.click(x1, y)
+
+        await page.wait_for_timeout(100)
+        x1_distance = (
+            rca_interaction_app.distance_widget.GetRepresentation().GetDistance()
+        )
+        assert rca_interaction_app.rca_window.left_press_event_mock.call_count > 0
+        assert x1_distance > x0_distance
+
+        # Check that changing the scale does not impact the widget
+        rca_interaction_app.view_handler.scale = 0.8
+
+        x2 = rca_box["x"] + rca_box["width"] * 0.75
+        await page.mouse.move(x1, y, steps=5)
+        await page.mouse.down()
+        await page.mouse.move(x2, y, steps=5)
+        await page.mouse.up()
+
+        await page.wait_for_timeout(500)
+        x2_distance = (
+            rca_interaction_app.distance_widget.GetRepresentation().GetDistance()
+        )
+        assert rca_interaction_app.rca_window.left_press_event_mock.call_count > 0
+        assert x2_distance > x1_distance
 
         await browser.close()
 
