@@ -1,14 +1,17 @@
 import { DecoderWorker } from '../utils/decoder.js';
+import { codecFamily, negotiateCodec } from '../utils/negotiate.js';
 import { getSession, subscribe, unsubscribe } from '../session.js';
 
 /**
  * Logic for the WebCodecs video decoder display area.
  */
 export class VideoDecoderDisplayAreaController {
-  constructor({ source, name = 'default', onSupported } = {}) {
+  constructor({ source, name = 'default', onSupported, onError } = {}) {
     this.source = source;
     this.name = name;
     this.onSupported = onSupported;
+    this.onError = onError;
+    this.rejected = [];
 
     this.isSupported =
       typeof window !== 'undefined' && 'VideoFrame' in window;
@@ -22,8 +25,26 @@ export class VideoDecoderDisplayAreaController {
     this.name = value;
   }
 
+  async negotiate() {
+    if (!this.session) {
+      return;
+    }
+    const info = await negotiateCodec(this.session, this.name, this.rejected);
+    this.onError?.(info.error ? `No common video codec (${info.error})` : null);
+  }
+
+  // browser rejected what the server emits: retry without that codec family
+  onDecoderError() {
+    const family = codecFamily(this.worker?.codec);
+    if (family && !this.rejected.includes(family)) {
+      this.rejected.push(family);
+      this.worker.codec = '';
+      this.negotiate();
+    }
+  }
+
   mount(canvas) {
-    this.worker = new DecoderWorker();
+    this.worker = new DecoderWorker(() => this.onDecoderError());
     if (!this.isSupported) {
       this.onSupported?.(false);
       return;
@@ -52,12 +73,12 @@ export class VideoDecoderDisplayAreaController {
 
     this.session = getSession(this.source);
     if (this.session) {
-      this.session.call('trame.rca.reset', [this.name]);
       this.subscription = subscribe(
         this.session,
         'trame.rca.topic.stream',
         this.handler
       );
+      this.negotiate();
     }
   }
 

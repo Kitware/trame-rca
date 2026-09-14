@@ -23,6 +23,12 @@ class AreaAdapter:
             self.last_meta = meta
         self.streamer.push_content(self.area_name, self.last_meta, content)
 
+    def video_codecs(self):
+        return []
+
+    def negotiate_video(self, codecs):
+        return {"error": "not-a-video-stream"}
+
     def on_interaction(self, origin, event):
         event_type = event.get("t", "mouse-down")
         position = event.get("p", (0, 0))
@@ -93,3 +99,15 @@ class StreamManager(LinkProtocol):
         adapter = self._area_adapters.get(area_name, None)
         if adapter:
             adapter.reset()
+
+    @exportRpc("trame.rca.video.codecs")
+    def video_codecs(self, area_name):
+        adapter = self._area_adapters.get(area_name, None)
+        return adapter.video_codecs() if adapter else []
+
+    @exportRpc("trame.rca.video.negotiate")
+    def negotiate_video(self, area_name, codecs):
+        adapter = self._area_adapters.get(area_name, None)
+        if adapter is None:
+            return {"error": "unknown-area"}
+        return adapter.negotiate_video(codecs)

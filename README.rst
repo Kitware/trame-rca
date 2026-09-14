@@ -98,6 +98,12 @@ Video encoding with VTKStreaming
 VTKStreaming provides tools for encoding and streaming frames from a VTK OpenGL render window using video codecs.
 When NVENC is available, it enables H.264/H.265 hardware encoding; otherwise, software encoding falls back to VP9 via libvpx.
 
+The codec is negotiated when the ``video-decoder`` display mounts: the client asks the server which codecs it can encode
+(``trame.rca.video.codecs``), filters them with ``VideoDecoder.isConfigSupported``, and sends the accepted list back
+(``trame.rca.video.negotiate``). The server then creates the encoder with ``vtkEncoderFactory`` preferences
+``Hardware=true;Codec=<accepted list>``. No frames are pushed before negotiation. Pass ``on_video_codec`` to
+``create_view_handler`` to be told what was selected (``codec``, ``backend``, ``hardware``, ``label`` or ``error``).
+
 You can try our code example:
 
 .. code-block:: console

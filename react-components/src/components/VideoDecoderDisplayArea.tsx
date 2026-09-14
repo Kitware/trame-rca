@@ -10,6 +10,7 @@ export default function VideoDecoderDisplayArea(props: AnyProps) {
   propsRef.current = props;
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [isSupported, setIsSupported] = useState(() => "VideoFrame" in window);
+  const [error, setError] = useState<string | null>(null);
   const controllerRef = useRef<VideoDecoderDisplayAreaController | null>(null);
 
   useEffect(() => {
@@ -17,6 +18,7 @@ export default function VideoDecoderDisplayArea(props: AnyProps) {
       source: propsRef.current,
       name,
       onSupported: (value: boolean) => setIsSupported(value),
+      onError: (message: string | null) => setError(message),
     });
     controllerRef.current = controller;
     controller.mount(canvasRef.current);
@@ -31,6 +33,7 @@ export default function VideoDecoderDisplayArea(props: AnyProps) {
   return (
     <div className="video-decoder-display-area">
       {!isSupported ? <h1>WebCodecs API is not supported.</h1> : null}
+      {isSupported && error ? <h1>{error}</h1> : null}
       <canvas ref={canvasRef} className="js-canvas" />
     </div>
   );

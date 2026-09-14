@@ -144,6 +144,16 @@ class RcaViewAdapter:
         """Reset encoder"""
         self._scheduler.reset()
 
+    def video_codecs(self) -> list[dict]:
+        fn = getattr(self._scheduler, "video_codecs", None)
+        return fn() if fn else []
+
+    def negotiate_video(self, codecs: list[str]) -> dict:
+        fn = getattr(self._scheduler, "negotiate_video", None)
+        if fn is None:
+            return {"error": "not-a-video-stream"}
+        return fn(codecs)
+
     def push(self, content: bytes, meta: dict):
         if not self.streamer:
             return

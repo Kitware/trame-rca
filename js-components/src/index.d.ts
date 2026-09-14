@@ -268,6 +268,7 @@ export interface VideoDecoderDisplayAreaControllerOptions {
   source?: TrameSourceLike;
   name?: string;
   onSupported?: (supported: boolean) => void;
+  onError?: (message: string | null) => void;
 }
 
 export class VideoDecoderDisplayAreaController {

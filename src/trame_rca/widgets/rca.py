@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import warnings
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable
 from weakref import WeakKeyDictionary, WeakValueDictionary
 
 from trame_client.widgets.core import VUE_CLIENT_TYPES, AbstractElement
@@ -105,7 +105,12 @@ class RemoteControlledArea(HtmlElement):
         target_fps: float = 30.0,
         interactive_quality: int = 60,
         still_quality: int = 90,
+        on_video_codec: Callable[[dict], None] | None = None,
     ):
+        """
+        ``on_video_codec`` is called with the negotiated encoder description
+        (``codec``, ``backend``, ``hardware``, ``label``; or ``error``) for video displays.
+        """
         scheduler = None
         window = window_wrapper(window)
         if self.display == "video-decoder":
@@ -114,7 +119,9 @@ class RemoteControlledArea(HtmlElement):
 
             if not isinstance(window, VtkRemoteControlledArea):
                 raise TypeError("Only VTK backends are supported by video decoder")
-            scheduler = RcaVideoRenderScheduler(window, target_fps=target_fps)
+            scheduler = RcaVideoRenderScheduler(
+                window, target_fps=target_fps, on_codec_changed=on_video_codec
+            )
 
         elif encoder:
             scheduler = RcaImageRenderScheduler(

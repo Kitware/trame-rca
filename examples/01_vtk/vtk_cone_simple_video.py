@@ -24,9 +24,8 @@ class ConeApp(TrameApp):
         super().__init__(server)
         self.render_window = self.setup_vtk()
 
+        self.state.video_codec = "negotiating..."
         self._build_ui()
-        self.state.video_codec = "unavailable"
-        self._update_video_codec_label()
 
     def setup_vtk(self):
         renderer = vtkRenderer()
@@ -56,16 +55,9 @@ class ConeApp(TrameApp):
         self.cone_source.SetResolution(resolution)
         self.view_handler.update()
 
-    def _update_video_codec_label(self):
-        # Reflect the encoder the video scheduler actually selected,
-        try:
-            from trame_rca.encoders.video_encoder import describe_encoder
-        except ImportError:
-            self.state.video_codec = "unavailable"
-            return
-        scheduler = getattr(self.view_handler, "_scheduler", None)
-        rca_encoder = getattr(scheduler, "_rca_encoder", None)
-        self.state.video_codec = describe_encoder(getattr(rca_encoder, "encoder", None))
+    def on_video_codec(self, info):
+        with self.state:
+            self.state.video_codec = info["label"]
 
     def update_reset_resolution(self):
         self.state.resolution = DEFAULT_RESOLUTION
@@ -94,7 +86,9 @@ class ConeApp(TrameApp):
 
             with layout.content:
                 view = rca.RemoteControlledArea(display="video-decoder")
-                self.view_handler = view.create_view_handler(self.render_window)
+                self.view_handler = view.create_view_handler(
+                    self.render_window, on_video_codec=self.on_video_codec
+                )
 
 
 # -----------------------------------------------------------------------------
