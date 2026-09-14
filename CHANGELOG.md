@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v2.11.0 (2026-09-14)
+
+### Features
+
+- Negotiate video codecs with server
+  ([`ef1c09a`](https://github.com/Kitware/trame-rca/commit/ef1c09afd8cf32f3c81e1734e925e236b69c942d))
+
+
 ## v2.10.2 (2026-09-14)
 
 ### Bug Fixes
