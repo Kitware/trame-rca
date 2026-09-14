@@ -12,6 +12,7 @@ if TYPE_CHECKING:
     from trame_rca.rca import VtkRemoteControlledArea
 
 from trame_rca.encoders import RcaVideoEncoder
+from trame_rca.encoders.video_encoder import available_codecs
 from trame_rca.rca import window_wrapper
 
 
@@ -25,6 +26,9 @@ class RcaVideoRenderScheduler:
 
     Supports only VTK rendering backend (:class:`vtkRenderWindow` or :class:`VtkRemoteControlledArea`).
 
+    With ``negotiate=True`` (default) the encoder is only created once a client calls
+    :meth:`negotiate_video` with the codecs it can decode; nothing is pushed before that.
+
     Call :meth:`close` before discarding the scheduler to stop the background task and release encoder resources.
     """
 
@@ -34,11 +38,14 @@ class RcaVideoRenderScheduler:
         *,
         push_callback: Callable[[bytes, dict]] | None = None,
         target_fps: float = 30.0,
+        negotiate: bool = True,
+        on_codec_changed: Callable[[dict], None] | None = None,
     ):
         self._rca: VtkRemoteControlledArea = window_wrapper(window)
         self._push_callback = push_callback
+        self.on_codec_changed = on_codec_changed
         self._rca_encoder = RcaVideoEncoder(
-            self._rca.render_window, push_callback=self._push
+            self._rca.render_window, push_callback=self._push, defer=negotiate
         )
         self._is_closing = False
         self._request_event = Event()
@@ -52,6 +59,27 @@ class RcaVideoRenderScheduler:
 
     def set_push_callback(self, callback: Callable[[bytes, dict], bool]):
         self._push_callback = callback
+
+    def video_codecs(self) -> list[dict]:
+        return available_codecs()
+
+    def negotiate_video(self, codecs: list[str]) -> dict:
+        """Create the encoder from the client-accepted codec ranking."""
+        server = [c["codec"] for c in available_codecs()]
+        codecs = [c for c in codecs if c in server]
+        if not codecs:
+            self._rca_encoder.release()
+            info = {
+                "error": "no-common-codec",
+                "server": server,
+                "label": "unavailable",
+            }
+        else:
+            info = self._rca_encoder.configure(codecs)
+            self.schedule_render()
+        if self.on_codec_changed is not None:
+            self.on_codec_changed(info)
+        return info
 
     @property
     def target_fps(self):

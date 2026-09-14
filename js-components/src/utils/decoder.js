@@ -5,12 +5,12 @@ const FLUSH = 4;
 const RESET = 5;
 const CLOSE = 6;
 const CLOSED = 7;
+const ERROR = 8;
 
 export const WORKER_CONTENT = `
 
 function reportError(e) {
-  console.log(e.message);
-  postMessage(e.message);
+  postMessage({ action: 8, message: e.message });
 }
 
 function createDecoder(canvas) {
@@ -55,14 +55,22 @@ onmessage = async function({ data: msg }) {
     case 2: // config
       this.canvas.width = msg.config.codedWidth;
       this.canvas.height = msg.config.codedHeight;
-      this.decoder.configure({ ...msg.config, optimizeForLatency: true });
+      try {
+        this.decoder.configure({ ...msg.config, optimizeForLatency: true });
+      } catch (e) {
+        reportError(e);
+      }
       break;
     case 3: // chunk
-      this.decoder.decode(new EncodedVideoChunk({
-        timestamp: msg.timestamp,
-        type: msg.type,
-        data: msg.data,
-      }));
+      try {
+        this.decoder.decode(new EncodedVideoChunk({
+          timestamp: msg.timestamp,
+          type: msg.type,
+          data: msg.data,
+        }));
+      } catch (e) {
+        reportError(e);
+      }
       break;
     case 4: // flush
       this.decoder.flush();
@@ -89,19 +97,22 @@ onmessage = async function({ data: msg }) {
 
 export const WORKER_JS_URL = URL.createObjectURL(new Blob([WORKER_CONTENT]));
 
-export function createWorker() {
+export function createWorker(onError) {
   const worker = new Worker(WORKER_JS_URL);
   worker.addEventListener('error', () => console.error('worker failed'), false);
   worker.onmessage = (e) => {
-    console.log(`Worker message: ${e.data}`);
-    console.log('>>> FIXME .....');
+    if (e.data && e.data.action === ERROR) {
+      console.error(`decoder: ${e.data.message}`);
+      if (onError) onError(e.data.message);
+    }
   };
   return worker;
 }
 
 export class DecoderWorker {
-  constructor() {
-    this.worker = createWorker();
+  /** @param {((message: string) => void) | null} onError */
+  constructor(onError = null) {
+    this.worker = createWorker(onError);
     this.codec = '';
     this.width = 0;
     this.height = 0;

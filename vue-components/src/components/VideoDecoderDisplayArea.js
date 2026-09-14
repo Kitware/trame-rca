@@ -19,6 +19,7 @@ export default {
   data() {
     return {
       isSupported: 'VideoFrame' in window,
+      error: null,
     };
   },
   expose: [''],
@@ -33,6 +34,9 @@ export default {
       name: this.name,
       onSupported: (value) => {
         this.isSupported = value;
+      },
+      onError: (message) => {
+        this.error = message;
       },
     });
     const canvas = this.$el.querySelector('.js-canvas');
@@ -49,6 +53,7 @@ export default {
   template: `
     <div class="video-decoder-display-area">
       <h1 v-if="!isSupported">WebCodecs API is not supported.</h1>
+      <h1 v-else-if="error">{{ error }}</h1>
       <canvas class="js-canvas"></canvas>
     </div>
   `,

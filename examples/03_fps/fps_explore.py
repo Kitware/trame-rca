@@ -29,7 +29,8 @@ from vtkmodules.vtkRenderingCore import (
     vtkRenderWindowInteractor,
 )
 
-from trame.widgets import html, vuetify3 as v3
+from trame.widgets import html
+from trame.widgets import vuetify3 as v3
 
 # use this import path to allow -e install for dev
 from trame_rca.widgets import rca
@@ -64,7 +65,7 @@ class ConeApp(TrameApp):
         self.server.cli.add_argument("--encoder", default="turbo-jpeg")  # jpeg
         args, _ = self.server.cli.parse_known_args()
         self.encoder = args.encoder
-        self.state.video_codec = "unavailable"
+        self.state.video_codec = "negotiating..."
         self.state.display_mode = IMAGE
         self.state.stats = None
         self.state.stats_display = ""
@@ -72,9 +73,6 @@ class ConeApp(TrameApp):
 
         self.render_window, self.cone_source = self.setup_vtk()
         self.build_ui()
-        # Label the codec from the encoder actually selected by the video scheduler
-        # (codec selection is automatic; see RcaVideoEncoder / vtkEncoderFactory).
-        self._update_video_codec_label()
 
     @property
     def view_handler(self):
@@ -82,16 +80,9 @@ class ConeApp(TrameApp):
             return self.video_view_handler
         return self.image_view_handler
 
-    def _update_video_codec_label(self):
-        # Reflect the encoder the video scheduler actually selected,
-        try:
-            from trame_rca.encoders.video_encoder import describe_encoder
-        except ImportError:
-            self.state.video_codec = "unavailable"
-            return
-        scheduler = getattr(self.video_view_handler, "_scheduler", None)
-        rca_encoder = getattr(scheduler, "_rca_encoder", None)
-        self.state.video_codec = describe_encoder(getattr(rca_encoder, "encoder", None))
+    def on_video_codec(self, info):
+        with self.state:
+            self.state.video_codec = info["label"]
 
     def setup_vtk(self):
         renderer = vtkRenderer()
@@ -264,7 +255,7 @@ class ConeApp(TrameApp):
                         event_throttle_ms=("500/target_fps",),
                     )
                     self.video_view_handler = video_view.create_view_handler(
-                        self.render_window,
+                        self.render_window, on_video_codec=self.on_video_codec
                     )
 
                     with v3.VCard(classes="pa-4 ma-0", style=STATS_STYLES):
@@ -296,9 +287,11 @@ class ConeApp(TrameApp):
 
     @change("quantization")
     def update_quantization(self, quantization, **_):
-        # No public API yet: reach into the video scheduler's encoder.
-        video_encoder = self.video_view_handler._scheduler._rca_encoder.encoder
-        video_encoder.SetQuantizationParameter(int(quantization))
+        scheduler = self.video_view_handler._scheduler
+        if scheduler._rca_encoder.is_ready:
+            scheduler._rca_encoder.video_encoder.SetQuantizationParameter(
+                int(quantization)
+            )
         self.video_view_handler.update()
 
     def update_reset_resolution(self):
