@@ -1,6 +1,29 @@
 # CHANGELOG
 
 
+## v2.10.2 (2026-09-14)
+
+### Bug Fixes
+
+- Fix rca interaction capture
+  ([`3e4c1cf`](https://github.com/Kitware/trame-rca/commit/3e4c1cffe90bc42ec8a1cd67bee83c57796c6abe))
+
+Fix RCA getting press events when start interaction happens on another DOM component.
+
+### Documentation
+
+- Update download badge url
+  ([`62ff3e5`](https://github.com/Kitware/trame-rca/commit/62ff3e53352fe6a067366e907056893cb1cfe361))
+
+### Refactoring
+
+- Factorize vue and react components
+  ([`069033c`](https://github.com/Kitware/trame-rca/commit/069033ce62811a2168571b94df4aa3ac95e59a73))
+
+- Add a common js-components package - Refactor vue and react to use js-components - Update
+  interaction test to be compatible with both clients
+
+
 ## v2.10.1 (2026-09-09)
 
 ### Bug Fixes
