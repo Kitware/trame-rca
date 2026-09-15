@@ -1,6 +1,19 @@
 # CHANGELOG
 
 
+## v2.11.1 (2026-09-15)
+
+### Bug Fixes
+
+- **adapter**: Scale interaction event payloads to match render buffer resolution
+  ([`75766f9`](https://github.com/Kitware/trame-rca/commit/75766f906620d269d8903c1263a3e61d59986314))
+
+### Continuous Integration
+
+- Add dependabot configuration for github action updates
+  ([`5f2621e`](https://github.com/Kitware/trame-rca/commit/5f2621eb65e72f828fab4135dc0464d4648d22a5))
+
+
 ## v2.11.0 (2026-09-14)
 
 ### Features
