@@ -40,6 +40,7 @@ profiler.enable()
 
 DEFAULT_RESOLUTION = 6
 DEFAULT_QUANTIZATION = 5  # 0 (high quality) - 63 (low quality)
+DEFAULT_BIT_RATE = 8  # in Mbps
 STATS_STYLES = """
     position: absolute;
     top: 1rem;
@@ -158,7 +159,7 @@ class ConeApp(TrameApp):
                     v_if="display_mode === 'image'",
                 )
                 html.Span(
-                    "Quantization ({{quantization}}/63) - Codec ({{video_codec}})",
+                    "Bitrate ({{bit_rate}} Mbps) - Quant ({{quantization}}/63) - Codec ({{video_codec}})",
                     v_else=True,
                 )
                 v3.VSpacer()
@@ -205,7 +206,18 @@ class ConeApp(TrameApp):
                     style="max-width: 300px",
                 )
                 v3.VSlider(
-                    v_else=True,
+                    v_if=(f"display_mode === '{VIDEO}'",),
+                    label="bitrate (Mbps)",
+                    v_model=("bit_rate", DEFAULT_BIT_RATE),
+                    min=1,
+                    max=100,
+                    step=1,
+                    hide_details=True,
+                    density="compact",
+                    style="max-width: 300px",
+                )
+                v3.VSlider(
+                    v_if=(f"display_mode === '{VIDEO}'",),
                     label="Quantization",
                     v_model=("quantization", DEFAULT_QUANTIZATION),
                     min=0,  # high quality
@@ -216,6 +228,7 @@ class ConeApp(TrameApp):
                     style="max-width: 300px",
                 )
                 v3.VSlider(
+                    label="# cone faces",
                     v_model=("resolution", DEFAULT_RESOLUTION),
                     min=3,
                     max=60,
@@ -285,13 +298,15 @@ class ConeApp(TrameApp):
     def update_quality(self, quality, **_):
         self.image_view_handler.update_quality(*quality)
 
-    @change("quantization")
-    def update_quantization(self, quantization, **_):
+    @change("bit_rate", "quantization")
+    def update_bit_rate(self, bit_rate, quantization, **_):
         scheduler = self.video_view_handler._scheduler
         if scheduler._rca_encoder.is_ready:
-            scheduler._rca_encoder.video_encoder.SetQuantizationParameter(
-                int(quantization)
-            )
+            scheduler._rca_encoder.encoder.quantization_parameter = quantization
+            scheduler._rca_encoder.encoder.bit_rate = bit_rate * 1_000_000
+            scheduler._rca_encoder.encoder.min_bit_rate = bit_rate * 1_000_000
+            scheduler._rca_encoder.encoder.max_bit_rate = bit_rate * 1_000_000
+            scheduler._rca_encoder.reset(self.render_window)
         self.video_view_handler.update()
 
     def update_reset_resolution(self):

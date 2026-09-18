@@ -36,6 +36,21 @@ _BACKEND_LABELS = {
     "vtkVpxEncoder": "libvpx",
 }
 
+# PLEASE DO NOT ALTER!
+# Video stream tuning for low-latency CBR (Constant Bit Rate) setup
+# - low-delay mode: P1 preset + ultra-low-latency tuning, infinite GOP (Group Of Pictures),
+#   0 B-frames, lookahead=False produces a packet per frame, nothing gets buffered;
+# - CBR at the chosen bitrate, with the frame rate told to the rate control
+#   so its per-frame budget is right (the default in vtk_streaming assumes 30 fps);
+# - QP (Quantization Parameter) floor so a static scene doesn't burn the budget on
+#   invisible detail.
+VIDEO_MAXIMUM_B_FRAMES = 0
+VIDEO_TARGET_FPS_DEFAULT = 30
+VIDEO_BITRATE_MBPS_DEFAULT = 8
+VIDEO_BITRATE_MBPS_MIN = 1
+VIDEO_BITRATE_MBPS_MAX = 100
+VIDEO_QP_FLOOR = 5  # H.264/HEVC QP scale; 5 is visually lossless
+
 
 def available_codecs() -> list[dict]:
     """Codecs this server can encode, server-preferred first."""
@@ -136,7 +151,12 @@ class RcaVideoEncoder:
     def codecs(self) -> Optional[list[str]]:
         return self._codecs
 
-    def configure(self, codecs: Optional[list[str]]) -> dict:
+    def configure(
+        self,
+        codecs: Optional[list[str]],
+        target_fps: int = VIDEO_TARGET_FPS_DEFAULT,
+        target_bitrate_mbps: float = VIDEO_BITRATE_MBPS_DEFAULT,
+    ) -> dict:
         """(Re)create the encoder for the given codec ranking. Returns :func:`describe_encoder`."""
         with self._timer_configure:
             self.release()
@@ -149,7 +169,7 @@ class RcaVideoEncoder:
             self.encoder.AddObserver(
                 vtkVideoEncoder.EncodedVideoChunkEvent, self._on_encoded_chunk
             )
-
+            self._tune(target_fps, target_bitrate_mbps)
             self._initialize(self._render_window)
         return self.describe()
 
@@ -162,11 +182,27 @@ class RcaVideoEncoder:
         self.frame.SetHeight(self._window_size[1])
         self.frame.AllocateDataStore()
 
+    def _tune(self, target_fps: int, target_bitrate_mbps: float):
+        if self.encoder is None:
+            raise RuntimeError(
+                "Tune called but no encoder exists. Did you forget to call RcaVideoEncoder.configure(codecs)?"
+            )
+        bitrate = int(float(target_bitrate_mbps) * 1_000_000)
+        self.encoder.low_delay_mode = True
+        self.encoder.maximum_b_frames = VIDEO_MAXIMUM_B_FRAMES
+        self.encoder.time_base_start = 1
+        self.encoder.time_base_end = max(1, int(target_fps))
+        self.encoder.bit_rate_control_mode = vtkVideoEncoder.BRCType.CBR
+        self.encoder.quantization_parameter = VIDEO_QP_FLOOR
+        self.encoder.bit_rate = bitrate
+        self.encoder.min_bit_rate = bitrate
+        self.encoder.max_bit_rate = bitrate
+        # one IDR (Instantaneous Decoder Refresh) to start the (re)built context, then delta frames only.
+        self.encoder.force_i_frame = True  # we will turn this off in _on_encoded_chunk
+
     def _initialize(self, render_window: vtkRenderWindow):
         self.encoder.SetGraphicsContext(render_window)
         self.encoder.SetInputPixelFormat(VTKPF_IYUV)
-        self.encoder.SetBitRateControlMode(vtkVideoEncoder.BRCType.CQP)
-        self.encoder.SetQuantizationParameter(5)  # 0 (high quality) - 63 (low quality)
 
         self.frame = vtkOpenGLVideoFrame()
         self.frame.SetContext(render_window)
@@ -174,7 +210,6 @@ class RcaVideoEncoder:
 
         self._set_size(render_window.GetSize())
         self.encoder.Initialize()
-        self.encoder.ForceIFrameOn()
 
     def reset(self, render_window: vtkRenderWindow) -> None:
         if not self.is_ready:
@@ -192,6 +227,8 @@ class RcaVideoEncoder:
     ) -> None:
         now_ms = int(time_ns() / 1000000)
         content, meta, _ = encode(video_packet, now_ms)
+        if video_packet.is_key_frame and _encoder.force_i_frame:
+            _encoder.force_i_frame = False
         if self._push_callback is not None:
             self._push_callback(content, meta, now_ms)
 
