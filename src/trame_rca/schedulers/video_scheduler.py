@@ -76,7 +76,7 @@ class RcaVideoRenderScheduler:
                 "label": "unavailable",
             }
         else:
-            info = self._rca_encoder.configure(codecs)
+            info = self._rca_encoder.configure(codecs, self.target_fps)
             self.schedule_render()
         if self.on_codec_changed is not None:
             self.on_codec_changed(info)
