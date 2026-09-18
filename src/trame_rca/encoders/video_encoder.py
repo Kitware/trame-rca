@@ -2,6 +2,7 @@ import logging
 from time import time_ns
 from typing import Callable, Optional
 
+from trame_common.utils import profiler
 from vtk_streaming.vtkStreamingCore import (
     VTKPF_IYUV,
     VTKVC_AV1,
@@ -38,15 +39,17 @@ _BACKEND_LABELS = {
 
 def available_codecs() -> list[dict]:
     """Codecs this server can encode, server-preferred first."""
+    timer = profiler.Timer("rca.video.available_codecs")
     result = []
-    for codec, name, probes in _CODECS:
-        if vtkEncoderFactory.CheckAvailability(codec):
-            result.append(
-                {
-                    "codec": name,
-                    "probes": probes,
-                }
-            )
+    with timer:
+        for codec, name, probes in _CODECS:
+            if vtkEncoderFactory.CheckAvailability(codec):
+                result.append(
+                    {
+                        "codec": name,
+                        "probes": probes,
+                    }
+                )
     return result
 
 
@@ -113,6 +116,9 @@ class RcaVideoEncoder:
         codecs: Optional[list[str]] = None,
         defer: bool = False,
     ) -> None:
+        self._timer_encoder = profiler.Timer("rca.video.encode")
+        self._timer_capture = profiler.Timer("rca.video.frame_capture")
+        self._timer_configure = profiler.Timer("rca.video.configure")
         self._render_window = render_window
         self._push_callback = push_callback
         self._codecs = codecs
@@ -132,17 +138,19 @@ class RcaVideoEncoder:
 
     def configure(self, codecs: Optional[list[str]]) -> dict:
         """(Re)create the encoder for the given codec ranking. Returns :func:`describe_encoder`."""
-        self.release()
-        self._codecs = codecs
-        self.encoder = create_encoder(codecs)
-        if self.encoder is None:
-            raise RuntimeError(
-                "No suitable video encoder is available on this machine."
+        with self._timer_configure:
+            self.release()
+            self._codecs = codecs
+            self.encoder = create_encoder(codecs)
+            if self.encoder is None:
+                raise RuntimeError(
+                    "No suitable video encoder is available on this machine."
+                )
+            self.encoder.AddObserver(
+                vtkVideoEncoder.EncodedVideoChunkEvent, self._on_encoded_chunk
             )
-        self.encoder.AddObserver(
-            vtkVideoEncoder.EncodedVideoChunkEvent, self._on_encoded_chunk
-        )
-        self._initialize(self._render_window)
+
+            self._initialize(self._render_window)
         return self.describe()
 
     def describe(self) -> dict:
@@ -192,8 +200,10 @@ class RcaVideoEncoder:
             return
         if self._window_size != render_window.GetSize():
             self._set_size(render_window_size=render_window.size)
-        self.frame.Capture(render_window)
-        self.encoder.Encode(self.frame)
+        with self._timer_capture:
+            self.frame.Capture(render_window)
+        with self._timer_encoder:
+            self.encoder.Encode(self.frame)
 
     def release(self):
         if self.encoder is not None:
