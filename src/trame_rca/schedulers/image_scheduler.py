@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import os
 from asyncio import Event, Queue, sleep
+from time import monotonic
 from concurrent.futures import Executor
 from concurrent.futures.thread import ThreadPoolExecutor
 from time import time_ns
@@ -115,21 +116,25 @@ class RcaImageRenderScheduler:
 
             interactive = self._interactive_quality
             still = self._still_quality
-
+            started = monotonic()
             self._render_frame(interactive)
 
             if interactive == still:
-                await sleep(self._target_period_s)
+                # Sleep only for what is left of the _target_period_s.
+                await sleep(max(0.0, self._target_period_s - (monotonic() - started)))
                 continue
 
-            if await self._wait_for_still():
+            if await self._wait_for_still(started):
                 self._render_frame(still)
 
-    async def _wait_for_still(self):
+    async def _wait_for_still(self, timer_started_at):
         self._request_event.clear()
 
-        for _ in range(self._n_period_until_still_render):
-            await sleep(self._target_period_s)
+        for i in range(1, self._n_period_until_still_render + 1):
+            # Sleep only for what is left of the i-th _target_period_s since the timer started, so that the time
+            # spent rendering the interactive frame (and any loop overhead) is not added on top of the wait.
+            deadline = timer_started_at + i * self._target_period_s
+            await sleep(max(0.0, deadline - monotonic()))
             if self._request_event.is_set():
                 return False
 

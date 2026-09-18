@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from asyncio import Event, sleep
+from time import monotonic
 from typing import TYPE_CHECKING, Callable
 
 from trame.app import asynchronous
@@ -113,8 +114,10 @@ class RcaVideoRenderScheduler:
                 break
 
             self._request_event.clear()
+            started = monotonic()
             self._rca_encoder.encode(self._rca.render_window)
-            await sleep(self._target_period_s)
+            # Sleep only for what is left of the _target_period_s.
+            await sleep(max(0.0, self._target_period_s - (monotonic() - started)))
 
     def _push(self, content: bytes, meta: dict, _m_time: int):
         if self._push_callback is not None:
