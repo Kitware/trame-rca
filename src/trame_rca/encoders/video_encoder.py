@@ -180,7 +180,11 @@ class RcaVideoEncoder:
         self._window_size = render_window_size
         self.frame.SetWidth(self._window_size[0])
         self.frame.SetHeight(self._window_size[1])
-        self.frame.AllocateDataStore()
+        if self.encoder and not self.encoder.SupportsDirectCaptureFromVTKRenderWindow():
+            # encoders that capture directly from the render window do not read
+            # pixels from the frame object. They only check width and height.
+            # skip unnecessary allocation.
+            self.frame.AllocateDataStore()
 
     def _tune(self, target_fps: int, target_bitrate_mbps: float):
         if self.encoder is None:
@@ -202,11 +206,15 @@ class RcaVideoEncoder:
 
     def _initialize(self, render_window: vtkRenderWindow):
         self.encoder.SetGraphicsContext(render_window)
-        self.encoder.SetInputPixelFormat(VTKPF_IYUV)
+        pixel_format = VTKPF_IYUV
+        if self.encoder.IsA("vtkVulkanEncoder"):
+            # vulkan encoder only supports NV12 format
+            pixel_format = VTKPF_NV12
+        self.encoder.SetInputPixelFormat(pixel_format)
 
         self.frame = vtkOpenGLVideoFrame()
         self.frame.SetContext(render_window)
-        self.frame.SetPixelFormat(VTKPF_IYUV)
+        self.frame.SetPixelFormat(pixel_format)
 
         self._set_size(render_window.GetSize())
         self.encoder.Initialize()
@@ -237,8 +245,9 @@ class RcaVideoEncoder:
             return
         if self._window_size != render_window.GetSize():
             self._set_size(render_window_size=render_window.size)
-        with self._timer_capture:
-            self.frame.Capture(render_window)
+        if not self.encoder.SupportsDirectCaptureFromVTKRenderWindow():
+            with self._timer_capture:
+                self.frame.Capture(render_window)
         with self._timer_encoder:
             self.encoder.Encode(self.frame)
 
