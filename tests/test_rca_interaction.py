@@ -1,3 +1,4 @@
+import asyncio
 import os
 import sys
 import uuid
@@ -39,11 +40,24 @@ class MockedVtkRemoteControlledArea(VtkRemoteControlledArea):
     def __init__(self, render_window):
         super().__init__(render_window)
         self.left_press_event_mock = MagicMock()
+        self.left_release_event_mock = MagicMock()
 
     def process_interaction_event(self, event):
         if event.get("type") == "LeftButtonPress":
             self.left_press_event_mock(event)
         super().process_interaction_event(event)
+        if event.get("type") == "LeftButtonRelease":
+            self.left_release_event_mock(event)
+
+    async def wait_for_left_releases(self, count):
+        # Browser input returns before the throttled RPC queue reaches VTK.
+        deadline = asyncio.get_running_loop().time() + 5
+        while self.left_release_event_mock.call_count < count:
+            assert asyncio.get_running_loop().time() < deadline, (
+                f"Expected {count} completed clicks/drags, received "
+                f"{self.left_release_event_mock.call_count} releases"
+            )
+            await asyncio.sleep(0.01)
 
 
 class RcaInteractionApp(TrameApp):
@@ -278,7 +292,7 @@ async def test_distance_widget_interaction_with_rca_scaling(
         await page.mouse.click(x0, y)
         await page.mouse.click(x1, y)
 
-        await page.wait_for_timeout(100)
+        await rca_interaction_app.rca_window.wait_for_left_releases(2)
         x1_distance = (
             rca_interaction_app.distance_widget.GetRepresentation().GetDistance()
         )
@@ -294,7 +308,7 @@ async def test_distance_widget_interaction_with_rca_scaling(
         await page.mouse.move(x2, y, steps=5)
         await page.mouse.up()
 
-        await page.wait_for_timeout(500)
+        await rca_interaction_app.rca_window.wait_for_left_releases(3)
         x2_distance = (
             rca_interaction_app.distance_widget.GetRepresentation().GetDistance()
         )

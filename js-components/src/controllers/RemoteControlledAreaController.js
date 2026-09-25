@@ -65,11 +65,18 @@ export class RemoteControlledAreaController {
   mount(root) {
     this.rootElement = root;
 
-    const getScreenEventPositionFor = (source) => ({
-      x: source.clientX - this.currentOffset[0],
-      y: this.currentSizeUpdateEvent.h - source.clientY + this.currentOffset[1],
-      z: 0,
-    });
+    const getScreenEventPositionFor = (source) => {
+      // Docking or scrolling can move the area without a resize notification.
+      const rect = this.rootElement?.getBoundingClientRect();
+      if (rect) {
+        this.currentOffset = [rect.left, rect.top];
+      }
+      return {
+        x: source.clientX - this.currentOffset[0],
+        y: this.currentSizeUpdateEvent.h - source.clientY + this.currentOffset[1],
+        z: 0,
+      };
+    };
 
     this.windowInteractor = vtkRenderWindowInteractor.newInstance({
       _getScreenEventPositionFor: getScreenEventPositionFor,
