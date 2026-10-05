@@ -11,10 +11,10 @@ logger = logging.getLogger(__name__)
 try:
     from .turbo_jpeg import encode as encode_turbo
 except RuntimeError:
-    logger.warning("Turbo JPEG - NOT AVAILABLE (System Library)")
+    logger.info("Turbo JPEG - NOT AVAILABLE (System Library)")
     encode_turbo = encode_pil
 except ModuleNotFoundError:
-    logger.warning("Turbo JPEG - NOT AVAILABLE (Python package)")
+    logger.info("Turbo JPEG - NOT AVAILABLE (Python package)")
     encode_turbo = encode_pil
 
 
