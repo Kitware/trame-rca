@@ -36,10 +36,10 @@ class VtkRemoteControlledArea:
             self._window_to_image.Update()
 
             image_data = self._window_to_image.GetOutput()
-            rows, cols, _ = image_data.GetDimensions()
+            cols, rows, _ = image_data.GetDimensions()
             scalars = image_data.GetPointData().GetScalars()
             np_image = vtk_to_numpy(scalars)
-            np_image = np_image.reshape((cols, rows, -1))
+            np_image = np_image.reshape((rows, cols, -1))
             np_image[:] = np_image[::-1, :, :]
             return np_image, cols, rows
 
