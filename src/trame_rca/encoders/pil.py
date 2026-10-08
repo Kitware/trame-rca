@@ -4,7 +4,7 @@ from io import BytesIO
 from numpy.typing import NDArray
 from PIL import Image
 
-from trame_rca.encoders.img import TO_IMAGE_FORMAT, TO_IMAGE_TYPE
+from trame_rca.encoders.img import TO_IMAGE_FORMAT, TO_IMAGE_TYPE, rgbx_view
 
 # Not supported on all platform so make it optional
 with suppress(ImportError):
@@ -54,7 +54,18 @@ def encode_np_img_to_bytes(
 
     # t0 = time.time()
     fake_file = BytesIO()
-    image = Image.fromarray(image)
+    rgbx = rgbx_view(image)
+    if rgbx is None:
+        # Copies: Pillow stores RGB as 4 bytes per pixel, so it can't share a
+        # 3-channel array
+        image = Image.fromarray(image)
+    else:
+        # VtkRemoteControlledArea frame: map its RGBX buffer without a copy
+        height, width = rgbx.shape[:2]
+        image = Image.frombuffer("RGBX", (width, height), rgbx, "raw", "RGBX", 0, 1)
+        if TO_IMAGE_FORMAT[img_format] != "jpeg":
+            # PNG can't write RGBX; this is the one copy fromarray would make
+            image = image.convert("RGB")
     image.save(fake_file, TO_IMAGE_FORMAT[img_format], quality=quality)
     # t1 = time.time()
     # print(f"pill encode {t1-t0:.04f}s")

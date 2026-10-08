@@ -1,6 +1,6 @@
 from numpy.typing import NDArray
-from turbojpeg import TurboJPEG, TJPF_RGB
-from trame_rca.encoders.img import TO_IMAGE_TYPE
+from turbojpeg import TurboJPEG, TJPF_RGB, TJPF_RGBX
+from trame_rca.encoders.img import TO_IMAGE_TYPE, rgbx_view
 # import time
 
 jpeg = TurboJPEG()
@@ -41,7 +41,11 @@ def encode_np_img_to_bytes(
         return b""
 
     # t0 = time.time()
-    result = jpeg.encode(image, quality=quality, pixel_format=TJPF_RGB)
+    pixel_format = TJPF_RGB
+    rgbx = rgbx_view(image)
+    if rgbx is not None:
+        image, pixel_format = rgbx, TJPF_RGBX
+    result = jpeg.encode(image, quality=quality, pixel_format=pixel_format)
     # t1 = time.time()
     # print(f"tubo-jpeg encode {t1-t0:.04f}s")
 
