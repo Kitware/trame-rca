@@ -9,6 +9,11 @@ from unittest.mock import MagicMock
 
 import pytest
 from PIL import Image
+from vtkmodules.vtkRenderingCore import (
+    vtkRenderer,
+    vtkRenderWindow,
+    vtkRenderWindowInteractor,
+)
 from trame_rca.encoders import RcaImageEncoder
 from trame_rca.schedulers import RcaImageRenderScheduler
 from trame_rca.rca import VtkRemoteControlledArea
@@ -159,3 +164,39 @@ def test_scheduler_is_compatible_with_string_encoder_format(encoder, a_render_wi
         interactive_quality=1,
         rca_encoder=encoder,
     )
+
+
+# Not square, so a transposed frame fails too
+WIDTH, HEIGHT = 96, 64
+
+# VTK viewports are (xmin, ymin, xmax, ymax) with the origin at the bottom left
+QUADRANTS = {
+    "top-left": ((0.0, 0.5, 0.5, 1.0), (255, 0, 0)),
+    "top-right": ((0.5, 0.5, 1.0, 1.0), (0, 255, 0)),
+    "bottom-left": ((0.0, 0.0, 0.5, 0.5), (0, 0, 255)),
+    "bottom-right": ((0.5, 0.0, 1.0, 0.5), (255, 255, 255)),
+}
+
+
+@pytest.fixture
+def quadrants_window():
+    render_window = vtkRenderWindow()
+    render_window.SetOffScreenRendering(1)
+    render_window.SetSize(WIDTH, HEIGHT)
+    for viewport, color in QUADRANTS.values():
+        renderer = vtkRenderer()
+        renderer.SetViewport(*viewport)
+        renderer.SetBackground(*(c / 255 for c in color))
+        render_window.AddRenderer(renderer)
+    interactor = vtkRenderWindowInteractor()
+    interactor.SetRenderWindow(render_window)
+    yield render_window
+    render_window.Finalize()
+
+
+@pytest.mark.parametrize("encoder", list(RcaImageEncoder))
+def test_frame_size_is_columns_then_rows(quadrants_window, encoder):
+    image, cols, rows = VtkRemoteControlledArea(quadrants_window).img_cols_rows
+    assert (cols, rows) == (WIDTH, HEIGHT)
+    _, meta, _ = encoder.encode(image, cols, rows, 90)
+    assert (meta["w"], meta["h"]) == (WIDTH, HEIGHT)
