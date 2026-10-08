@@ -1,5 +1,6 @@
 import json
 
+import numpy as np
 import vtkmodules.vtkRenderingOpenGL2  # noqa
 from packaging.version import Version
 from trame_common.utils import profiler
@@ -27,6 +28,7 @@ class VtkRemoteControlledArea:
         self._window_to_image.ReadFrontBufferOff()
         self._window_to_image.ShouldRerenderOff()
         self._window_to_image.FixBoundaryOn()
+        self._window_to_image.SetInputBufferTypeToRGBA()
 
     @property
     def img_cols_rows(self):
@@ -40,7 +42,10 @@ class VtkRemoteControlledArea:
             scalars = image_data.GetPointData().GetScalars()
             np_image = vtk_to_numpy(scalars)
             np_image = np_image.reshape((rows, cols, -1))
-            np_image[:] = np_image[::-1, :, :]
+            # Flip into a new RGBA buffer and return its RGB channels as a view:
+            # VTK's alpha is 0 on the background, and the encoders can read the
+            # 4-byte pixels in place (see encoders.img.rgbx_view)
+            np_image = np.ascontiguousarray(np_image[::-1])[..., :3]
             return np_image, cols, rows
 
     @property
