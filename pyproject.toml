@@ -34,6 +34,7 @@ dev = [
     "pre-commit",
     "pytest",
     "pytest-asyncio",
+    "pytest-benchmark",
     "pytest-playwright",
     "pytest-xprocess",
     "ruff",
