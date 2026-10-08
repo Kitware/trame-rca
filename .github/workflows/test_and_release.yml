@@ -51,7 +51,21 @@ jobs:
         if: matrix.config.os == 'ubuntu-latest'
         run: |
           sudo apt update
-          sudo apt install -y libosmesa6-dev libturbojpeg
+          sudo apt install -y libosmesa6-dev
+          echo "VTK_DEFAULT_OPENGL_WINDOW=vtkOSOpenGLRenderWindow" >> "$GITHUB_ENV"
+
+      # PyTurboJPEG 2 needs libjpeg-turbo >= 3.0. Ubuntu's libturbojpeg is 2.x and,
+      # if installed, is found first, so use the official package in /opt instead.
+      - name: Install libjpeg-turbo for Linux
+        if: matrix.config.os == 'ubuntu-latest'
+        run: |
+          curl -fsSL -o libjpeg-turbo.deb https://github.com/libjpeg-turbo/libjpeg-turbo/releases/download/3.2.0/libjpeg-turbo-official_3.2.0_amd64.deb
+          echo "21297da4a4eb34ebefc54afca5d8dd86c0fdd6a9dfe49b1b962c5d1eeeafd8ec  libjpeg-turbo.deb" | sha256sum -c
+          sudo apt install -y ./libjpeg-turbo.deb
+
+      - name: Install libjpeg-turbo for macOS
+        if: matrix.config.os == 'macos-latest'
+        run: brew install jpeg-turbo
 
       - name: Set Up Node
         uses: actions/setup-node@v7
@@ -78,11 +92,23 @@ jobs:
       - name: Install and Run Tests
         run: |
           pip install ".[turbo, avif, vtkstreaming, dev]"
+          # Fail instead of silently testing the Pillow fallback as turbo-jpeg
+          if [ "${{ matrix.config.os }}" != "windows-latest" ]; then
+            python -c "from trame_rca.encoders.image_encoder import encode_pil, encode_turbo; assert encode_turbo is not encode_pil, 'turbo-jpeg fell back to Pillow'"
+            python -c "from trame_rca.encoders.turbo_jpeg import jpeg; print('turbo-jpeg uses', jpeg._TurboJPEG__find_turbojpeg())"
+          fi
           # Install requirements for playwright
           playwright install
-          pytest -s ./tests
+          pytest -s ./tests --benchmark-json=benchmark.json
         env:
           CI: true
+
+      - name: Upload benchmark results
+        if: matrix.config.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@v7
+        with:
+          name: benchmark-linux
+          path: benchmark.json
 
   vitest:
     name: Vitest (JS Core Unit Tests)
