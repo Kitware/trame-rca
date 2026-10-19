@@ -128,3 +128,43 @@ up outside the trame-rca directory, checkout the `wheel` branch, and install it 
     cd ../trame-rca
 
     python ./examples/05_video/vtk_cone_simple_video.py
+
+Shared textures with Electron
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+In an Electron app, VTK can render into a GPU texture that Electron shows as is: without encoding
+and without copying to the CPU. The Electron side is the ``@kitware/trame-rca-electron`` npm package in
+``./electron``: it starts the trame server and loads its page. Supported on macOS (IOSurface),
+Windows (D3D11 NT handles) and Linux under Wayland (dma-buf).
+
+- macOS: works out of the box (IOSurface).
+- Windows: the GL driver needs ``WGL_NV_DX_interop2``, and VTK must render on the GPU
+  Chromium uses. Set ``D3D_ADAPTER=<index>`` if that isn't DXGI adapter 0.
+- Linux: Wayland only for now (dma-buf). Electron duplicates the server's file descriptors
+  with ``pidfd_getfd``, which needs ``kernel.yama.ptrace_scope`` at 1 or less:
+  ``sudo sysctl -w kernel.yama.ptrace_scope=1``. Set ``RENDER_NODE=/dev/dri/renderD129``
+  if VTK picks another GPU than the compositor.
+
+.. code-block:: python
+
+    from trame_rca.electron import init_vtk
+    from trame_rca.widgets import rca
+
+    init_vtk()  # before creating any VTK render window
+
+    # ... create render_window, then in the UI:
+    view = rca.RemoteControlledArea(display="shared-texture")
+    view_handler = view.create_electron_handler(render_window)
+
+You can try our code example:
+
+.. code-block:: console
+
+    pip install trame trame-vuetify
+    pip install "trame-rca[electron]"
+
+    cd examples/06_electron/electron
+    npm i
+    npm start
+
+See ``electron/README.md`` for the Electron API and what packaging an app needs.

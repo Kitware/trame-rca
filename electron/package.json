@@ -1,0 +1,34 @@
+{
+  "name": "@kitware/trame-rca-electron",
+  "version": "0.1.0",
+  "description": "Show trame-rca shared-texture views in Electron, without encoding frames",
+  "license": "Apache-2.0",
+  "author": "Kitware Inc.",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Kitware/trame-rca.git",
+    "directory": "electron"
+  },
+  "type": "commonjs",
+  "main": "src/main/index.js",
+  "exports": {
+    ".": "./src/main/index.js",
+    "./preload": "./src/preload.js"
+  },
+  "files": [
+    "src/**/*.js"
+  ],
+  "scripts": {
+    "lint": "eslint src test",
+    "test": "node --test"
+  },
+  "peerDependencies": {
+    "electron": ">=44.7.0"
+  },
+  "dependencies": {
+    "koffi": "^3.3.3"
+  },
+  "devDependencies": {
+    "eslint": "^8.57.1"
+  }
+}

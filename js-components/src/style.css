@@ -42,6 +42,16 @@
   position: relative;
 }
 
+.shared-texture-display-area {
+  display: block;
+  margin: 0;
+  outline: none;
+  padding: 0;
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
 .image-region {
   margin: 0;
   padding: 0;

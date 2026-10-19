@@ -26,6 +26,7 @@ __all__ = [
     "MediaSourceDisplayArea",
     "VideoDecoderDisplayArea",
     "RawImageDisplayArea",
+    "SharedTextureDisplayArea",
     "ImageStream",
     "ImageRegion",
 ]
@@ -133,6 +134,59 @@ class RemoteControlledArea(HtmlElement):
             )
 
         view_handler = RcaViewAdapter(window, self.name, scheduler=scheduler)
+        self.add_view_handler(view_handler)
+        return view_handler
+
+    def create_electron_handler(
+        self,
+        window: RemoteControlledAreaProtocol | vtkRenderWindow,
+        target_fps: float = 60.0,
+        before_render: Callable[[], None] | None = None,
+        on_disconnect: Callable[[], None] | None = None,
+    ):
+        """
+        Render ``render_window`` into a texture shared with the Electron app that
+        started this server (see @Kitware/trame-rca-electron), for ``display="shared-texture"``.
+
+        Call ``trame_rca.electron.init_vtk()`` before creating ``render_window``.
+        ``before_render`` is called before every frame and may schedule another render,
+        e.g. to animate. ``on_disconnect`` is called when Electron goes away and
+        defaults to stopping the server.
+        """
+        from trame.app import asynchronous
+
+        from trame_rca.electron import emp_port, server_url
+        from trame_rca.schedulers import RcaSharedTextureRenderScheduler
+
+        if self.display != "shared-texture":
+            raise ValueError(
+                "create_electron_handler needs a RemoteControlledArea with "
+                f'display="shared-texture", not "{self.display}"'
+            )
+
+        if on_disconnect is None:
+
+            def on_disconnect():
+                asynchronous.create_task(self.server.stop())
+
+        rca_protocol = window_wrapper(window)
+        scheduler = RcaSharedTextureRenderScheduler(
+            rca_protocol,
+            emp_port(self.server),
+            target_fps=target_fps,
+            on_disconnect=on_disconnect,
+            before_render=before_render,
+        )
+
+        def start(**_):
+            scheduler.start(url=server_url(self.server))
+
+        if self.server.running:
+            start()
+        else:
+            self.ctrl.on_server_ready.add(start)
+
+        view_handler = RcaViewAdapter(scheduler.rca, self.name, scheduler=scheduler)
         self.add_view_handler(view_handler)
         return view_handler
 
@@ -249,6 +303,19 @@ class RawImageDisplayArea(HtmlElement):
             "name",
             "origin",
             ("image_style", "imageStyle"),
+        ]
+
+
+class SharedTextureDisplayArea(HtmlElement):
+    """The canvas trame-rca-electron draws the shared texture into, once a frame."""
+
+    def __init__(self, **kwargs):
+        super().__init__(
+            "shared-texture-display-area",
+            **kwargs,
+        )
+        self._event_names += [
+            "stats",
         ]
 
 
