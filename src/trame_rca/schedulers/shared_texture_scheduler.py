@@ -22,6 +22,7 @@ if TYPE_CHECKING:
     from vtkmodules.vtkRenderingCore import vtkRenderWindow
 
 from trame.app import asynchronous
+from trame_common.utils import profiler
 
 from trame_rca.electron.comm import (
     PROTOCOL_VERSION,
@@ -58,6 +59,8 @@ class RcaSharedTextureRenderScheduler:
         on_disconnect: Callable[[], None] | None = None,
         before_render: Callable[[], None] | None = None,
     ):
+        self._timer_render = profiler.Timer("rca.shared_texture.render")
+        self._timer_flush = profiler.Timer("rca.shared_texture.flush")
         self._rca = window_wrapper(window)
         assert isinstance(self._rca, VtkRemoteControlledArea), (
             "SharedTexture scheduler only works with VTK render windows!"
@@ -173,9 +176,11 @@ class RcaSharedTextureRenderScheduler:
             assert isinstance(self._passport, TexturePassport), "Passport unavailable!"
             if self._before_render:
                 self._before_render()
-            self._rca.render_window.Render()
-            self._rca.render_window.MakeCurrent()
-            await self._passport.flush_graphics_commands()
+            with self._timer_render:
+                self._rca.render_window.Render()
+            with self._timer_flush:
+                self._rca.render_window.MakeCurrent()
+                await self._passport.flush_graphics_commands()
 
             # Backpressure: don't touch the texture until Electron is done reading it.
             # Input keeps setting the request event meanwhile, so it renders once afterwards.
