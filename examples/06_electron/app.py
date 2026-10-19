@@ -36,6 +36,12 @@ from vtkmodules.vtkRenderingVolumeOpenGL2 import vtkSmartVolumeMapper  # noqa: E
 # Required for vtk factory
 import vtkmodules.vtkRenderingOpenGL2  # noqa: E402, F401
 
+# Uncomment to see per-frame profile
+# from trame_common.utils import profiler
+# profiler.enable()
+# profiler.LOGGER.filter.include("rca.shared_texture")
+# profiler.LOGGER.filter.exclude("rca.vtk")
+
 
 def create_vtk_pipeline():
     wavelet = vtkRTAnalyticSource()
