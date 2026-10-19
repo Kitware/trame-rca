@@ -94,3 +94,8 @@ def init_vtk():
         # The shared texture must live on the GPU Chromium uses, which is DXGI adapter 0
         # unless told otherwise. VTK's WGL context has to be on that GPU too.
         nthandle.init_device(int(os.environ.get("D3D_ADAPTER", "0")))
+        # Ask for a 1ms resolution in the Python process. Otherwise, asyncio.sleep
+        # rounds short waits to ~15.6ms
+        import ctypes
+
+        ctypes.WinDLL("winmm").timeBeginPeriod(1)
