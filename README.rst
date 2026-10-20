@@ -147,10 +147,10 @@ Windows (D3D11 NT handles) and Linux under Wayland (dma-buf).
 
 .. code-block:: python
 
-    from trame_rca.electron import init_vtk
+    from trame_rca.widgets import init_vtk_for_shared_textures
     from trame_rca.widgets import rca
 
-    init_vtk()  # before creating any VTK render window
+    init_vtk_for_shared_textures()  # before creating any VTK render window
 
     # ... create render_window, then in the UI:
     view = rca.RemoteControlledArea(display="shared-texture")

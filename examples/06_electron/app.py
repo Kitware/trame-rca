@@ -11,11 +11,10 @@ from trame.app import TrameApp
 from trame.decorators import change
 from trame.ui.vuetify3 import SinglePageWithDrawerLayout
 from trame.widgets import html, vuetify3 as v3
-from trame_rca.electron import init_vtk
-from trame_rca.widgets import rca
+from trame_rca.widgets import init_vtk_for_shared_textures, rca
 
 # Before creating any VTK render window: VTK must render on the GPU Electron uses.
-init_vtk()
+init_vtk_for_shared_textures()
 
 from vtkmodules.vtkCommonDataModel import vtkPiecewiseFunction  # noqa: E402
 from vtkmodules.vtkFiltersSources import vtkPartitionedDataSetCollectionSource  # noqa: E402
