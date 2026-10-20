@@ -1,7 +1,7 @@
-const test = require('node:test');
-const assert = require('node:assert/strict');
+import test from 'node:test';
+import assert from 'node:assert/strict';
 
-const protocol = require('../src/main/protocol');
+import * as protocol from '../src/main/protocol.js';
 
 test('passportName picks the platform passport', () => {
   assert.equal(protocol.passportName({ platform: 'darwin' }), 'iosurface');

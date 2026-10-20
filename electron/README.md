@@ -9,8 +9,8 @@ This package and the `trame-rca` python package speak a versioned protocol (see
 ## Use
 
 ```js
-const { app, BrowserWindow } = require('electron/main');
-const { launchTrame, webPreferences } = require('@kitware/trame-rca-electron');
+import { app, BrowserWindow } from 'electron/main';
+import { launchTrame, webPreferences } from '@kitware/trame-rca-electron';
 
 app.whenReady().then(() => {
   const win = new BrowserWindow({ webPreferences: webPreferences() });
@@ -29,9 +29,10 @@ and loads the page in `win` once trame serves it. Options:
 
 It returns `{ process, close }`. `close()` kills the server; it is called when `win` closes.
 
-`webPreferences(extra)` sets the preload, and turns off the sandbox the preload needs for
-`sharedTexture`. If the window needs its own preload, `require('@kitware/trame-rca-electron/preload')`
-from it.
+`webPreferences(extra)` sets the preload, and turns off the sandbox: the preload needs
+`sharedTexture`, and Electron doesn't run ES module preloads in a sandbox. If the window needs its
+own preload, `import '@kitware/trame-rca-electron/preload'` from it: it must then be an ES module
+preload too, with the `.mjs` extension.
 
 On the python side, see `examples/06_electron` in trame-rca.
 

@@ -1,6 +1,6 @@
-const { app, BrowserWindow } = require('electron/main');
-const path = require('node:path');
-const { launchTrame, webPreferences } = require('@kitware/trame-rca-electron');
+import { app, BrowserWindow } from 'electron/main';
+import { fileURLToPath } from 'node:url';
+import { launchTrame, webPreferences } from '@kitware/trame-rca-electron';
 
 // Run ../app.py with the python of the active environment, unless PYTHON says otherwise.
 const python = process.env.PYTHON || (process.platform === 'win32' ? 'python' : 'python3');
@@ -16,7 +16,7 @@ app.whenReady().then(() => {
   launchTrame(win, {
     command: python,
     args: [
-      path.join(__dirname, '..', 'app.py'),
+      fileURLToPath(new URL('../app.py', import.meta.url)),
       '--electron-versions',
       JSON.stringify({ electron, chrome, node, v8 }),
     ],

@@ -9,17 +9,18 @@
     "url": "https://github.com/Kitware/trame-rca.git",
     "directory": "electron"
   },
-  "type": "commonjs",
+  "type": "module",
   "main": "src/main/index.js",
   "exports": {
     ".": "./src/main/index.js",
-    "./preload": "./src/preload.js"
+    "./preload": "./src/preload.mjs"
   },
   "files": [
-    "src/**/*.js"
+    "src/**/*.js",
+    "src/**/*.mjs"
   ],
   "scripts": {
-    "lint": "eslint src test",
+    "lint": "eslint src test --ext .js,.mjs",
     "test": "node --test"
   },
   "peerDependencies": {

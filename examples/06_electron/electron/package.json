@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "description": "Electron shell for the shared texture trame-rca example",
   "license": "Apache-2.0",
-  "type": "commonjs",
+  "type": "module",
   "main": "main.js",
   "scripts": {
     "start": "electron ."

@@ -1,6 +1,6 @@
 // Draws the frames the main process sends into the page's shared-texture-display-area.
-// Use it as a BrowserWindow's preload (see webPreferences()), or require it from yours.
-const { contextBridge, ipcRenderer, sharedTexture } = require('electron');
+// Use it as a BrowserWindow's preload (see webPreferences()), or import it from yours.
+import { contextBridge, ipcRenderer, sharedTexture } from 'electron';
 
 const STATS_INTERVAL_MS = 1000;
 

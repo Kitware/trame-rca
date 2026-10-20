@@ -1,6 +1,6 @@
 // Duplicate an NT handle out of another process with DuplicateHandle.
 // Requires PROCESS_DUP_HANDLE on the target (e.g. it is our child, running as the same user).
-const koffi = require('koffi');
+import koffi from 'koffi';
 
 const kernel32 = koffi.load('kernel32.dll');
 const OpenProcess = kernel32.func('uintptr_t __stdcall OpenProcess(uint32_t access, int inherit, uint32_t pid)');
@@ -35,4 +35,4 @@ const handleBuffer = (handle) => {
 
 const closeHandle = (handle) => CloseHandle(handle);
 
-module.exports = { dupHandleFromProcess, handleBuffer, closeHandle };
+export { dupHandleFromProcess, handleBuffer, closeHandle };

@@ -80,7 +80,7 @@ const textureInfo = (msg, handle) => ({
   handle,
 });
 
-module.exports = {
+export {
   PROTOCOL_VERSION,
   checkProtocol,
   createLineParser,

@@ -1,6 +1,6 @@
 // Open another process's IOSurface by its global ID with IOSurfaceLookup.
 // Only works for surfaces created with kIOSurfaceIsGlobal (deprecated, unsandboxed only).
-const koffi = require('koffi');
+import koffi from 'koffi';
 
 const iosurface = koffi.load('/System/Library/Frameworks/IOSurface.framework/IOSurface');
 const cf = koffi.load('/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation');
@@ -33,4 +33,4 @@ const surfaceHandle = (ref) => {
 
 const releaseSurface = (ref) => CFRelease(ref);
 
-module.exports = { lookupSurface, describeSurface, surfaceHandle, releaseSurface };
+export { lookupSurface, describeSurface, surfaceHandle, releaseSurface };

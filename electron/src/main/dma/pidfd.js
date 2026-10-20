@@ -1,6 +1,6 @@
 // Duplicate a file descriptor out of another process with pidfd_getfd(2).
 // Requires ptrace access to the target (e.g. it is our child with ptrace_scope=1).
-const koffi = require('koffi');
+import koffi from 'koffi';
 
 const libc = koffi.load('libc.so.6');
 const syscall = libc.func('long syscall(long nr, ...)');
@@ -31,4 +31,4 @@ const dupFdFromProcess = (pid, targetFd) => {
 
 const closeFd = (fd) => close(fd);
 
-module.exports = { dupFdFromProcess, closeFd };
+export { dupFdFromProcess, closeFd };

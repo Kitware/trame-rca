@@ -1,30 +1,28 @@
-const { app, ipcMain, sharedTexture } = require('electron/main');
-const { spawn } = require('node:child_process');
-const net = require('node:net');
-const path = require('node:path');
+import { app, ipcMain, sharedTexture } from 'electron/main';
+import { spawn } from 'node:child_process';
+import net from 'node:net';
+import { fileURLToPath } from 'node:url';
 
-const protocol = require('./protocol');
+import { loadDma } from './dma/index.js';
+import * as protocol from './protocol.js';
 
-// Loaded on demand: pidfd.js needs Linux's libc, iosurface.js needs macOS frameworks,
-// winhandle.js needs kernel32.
-const pidfd = () => require('./dma/pidfd');
-const iosurface = () => require('./dma/iosurface');
-const winhandle = () => require('./dma/winhandle');
-
-// The preload a BrowserWindow needs to show shared-texture views.
-const preloadPath = path.join(__dirname, '..', 'preload.js');
+// The preload a BrowserWindow needs to show shared-texture views. Electron only runs
+// ES module preloads with the .mjs extension.
+const preloadPath = fileURLToPath(new URL('../preload.mjs', import.meta.url));
 
 // The webPreferences a BrowserWindow needs to show shared-texture views.
 const webPreferences = (extra = {}) => ({
   preload: preloadPath,
-  // The preload needs require('electron').sharedTexture.
+  // The preload needs electron's sharedTexture, and ES module preloads can't be sandboxed.
   sandbox: false,
   ...extra,
 });
 
-// Holds this process's reference to the producer's current texture.
+// Holds this process's reference to the producer's current texture. `dma` is this
+// platform's module from loadDma().
 class TextureHandle {
-  constructor(msg, log) {
+  constructor(msg, dma, log) {
+    this.dma = dma;
     this.localFds = [];
     this.surfaceRef = null;
     this.localHandle = null;
@@ -35,7 +33,7 @@ class TextureHandle {
     const kind = protocol.handleKind(msg);
     if (kind === 'ioSurface') {
       // Open the producer's global IOSurface in this process.
-      const { lookupSurface, describeSurface, surfaceHandle } = iosurface();
+      const { lookupSurface, describeSurface, surfaceHandle } = this.dma;
       this.surfaceRef = lookupSurface(msg.ioSurfaceId);
       log.info(
         `[trame-rca] texture ${msg.width}x${msg.height} (${msg.pixelFormat}) IOSurface id=${msg.ioSurfaceId} ${describeSurface(this.surfaceRef)}`,
@@ -44,7 +42,7 @@ class TextureHandle {
     }
     if (kind === 'ntHandle') {
       // Duplicate the producer's NT handle into this process.
-      const { dupHandleFromProcess, handleBuffer } = winhandle();
+      const { dupHandleFromProcess, handleBuffer } = this.dma;
       this.localHandle = dupHandleFromProcess(msg.pid, msg.ntHandle);
       log.info(
         `[trame-rca] texture ${msg.width}x${msg.height} (${msg.pixelFormat}) handle 0x${msg.ntHandle.toString(16)} -> 0x${this.localHandle.toString(16)}`,
@@ -52,7 +50,7 @@ class TextureHandle {
       return { ntHandle: handleBuffer(this.localHandle) };
     }
     // Duplicate the producer's dma-buf fds into this process.
-    this.localFds = msg.planes.map((p) => pidfd().dupFdFromProcess(msg.pid, p.fd));
+    this.localFds = msg.planes.map((p) => this.dma.dupFdFromProcess(msg.pid, p.fd));
     log.info(
       `[trame-rca] texture ${msg.width}x${msg.height} ${msg.fourcc} (${msg.pixelFormat}) modifier=${msg.modifier} fds ${msg.planes.map((p) => p.fd)} -> ${this.localFds}`,
     );
@@ -60,11 +58,11 @@ class TextureHandle {
   }
 
   release() {
-    this.localFds.forEach((fd) => pidfd().closeFd(fd));
+    this.localFds.forEach((fd) => this.dma.closeFd(fd));
     this.localFds = [];
-    if (this.surfaceRef) iosurface().releaseSurface(this.surfaceRef);
+    if (this.surfaceRef) this.dma.releaseSurface(this.surfaceRef);
     this.surfaceRef = null;
-    if (this.localHandle) winhandle().closeHandle(this.localHandle);
+    if (this.localHandle) this.dma.closeHandle(this.localHandle);
     this.localHandle = null;
   }
 }
@@ -85,6 +83,8 @@ const launchTrame = (
   if (!command) throw new Error('launchTrame: `command` is required');
   let socket = null;
   let texture = null;
+  // This platform's dma module, loaded before the server is spawned.
+  let dma = null;
   let closed = false;
   const result = { process: null, close: null };
 
@@ -147,7 +147,7 @@ const launchTrame = (
       try {
         // A new texture after a resize. Frames still in flight hold their own imports.
         releaseTexture();
-        texture = new TextureHandle(msg, log);
+        texture = new TextureHandle(msg, dma, log);
       } catch (err) {
         log.error('[trame-rca] failed to open the texture:', err);
         conn.destroy();
@@ -207,7 +207,14 @@ const launchTrame = (
   };
   win.once('closed', result.close);
 
-  server.listen(0, '127.0.0.1', () => {
+  server.listen(0, '127.0.0.1', async () => {
+    try {
+      dma = await loadDma(process.platform);
+    } catch (err) {
+      log.error('[trame-rca] failed to load the OS texture API:', err);
+      result.close();
+      return;
+    }
     if (closed) return;
     const { port } = server.address();
     const fullArgs = [...args, '--server', '--port', '0', '--emp-port', String(port)];
@@ -226,4 +233,4 @@ const launchTrame = (
   return result;
 };
 
-module.exports = { launchTrame, preloadPath, webPreferences, protocol };
+export { launchTrame, preloadPath, webPreferences, protocol };
