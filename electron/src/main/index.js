@@ -18,7 +18,7 @@ const webPreferences = (extra = {}) => ({
   ...extra,
 });
 
-// Holds this process's reference to the producer's current texture. `dma` is this
+// Holds this process's reference to one of the producer's textures. `dma` is this
 // platform's module from loadDma().
 class TextureHandle {
   constructor(msg, dma, log) {
@@ -74,7 +74,7 @@ class TextureHandle {
 // `args` its arguments, e.g. ['app.py'].
 // trame-rca-electron appends the arguments the server needs: --server --port 0 --emp-port <port>.
 //
-// Returns { process, close }. close() kills the server and releases the texture; it is
+// Returns { process, close }. close() kills the server and releases the textures; it is
 // called on its own when `win` closes.
 const launchTrame = (
   win,
@@ -82,7 +82,8 @@ const launchTrame = (
 ) => {
   if (!command) throw new Error('launchTrame: `command` is required');
   let socket = null;
-  let texture = null;
+  // The producer's ring of textures, by slot.
+  let textures = [];
   // This platform's dma module, loaded before the server is spawned.
   let dma = null;
   let closed = false;
@@ -92,9 +93,9 @@ const launchTrame = (
     if (socket && !socket.destroyed) socket.write(protocol.encode(msg));
   };
 
-  const releaseTexture = () => {
-    texture?.release();
-    texture = null;
+  const releaseTextures = (fromSlot = 0) => {
+    textures.slice(fromSlot).forEach((t) => t?.release());
+    textures = textures.slice(0, fromSlot);
   };
 
   const forwardFrame = async (info, msg) => {
@@ -145,15 +146,18 @@ const launchTrame = (
       win.loadURL(msg.url);
     } else if (msg.type === 'texture') {
       try {
-        // A new texture after a resize. Frames still in flight hold their own imports.
-        releaseTexture();
-        texture = new TextureHandle(msg, dma, log);
+        const { slot, slots } = msg;
+        textures[slot]?.release();
+        textures[slot] = new TextureHandle(msg, dma, log);
+        // release textures beyond `slots` to handle shrink
+	releaseTextures(slots);
       } catch (err) {
         log.error('[trame-rca] failed to open the texture:', err);
         conn.destroy();
       }
-    } else if (msg.type === 'frame' && texture) {
-      forwardFrame(texture.info, msg);
+    } else if (msg.type === 'frame') {
+      const texture = textures[msg.slot];
+      if (texture) forwardFrame(texture.info, msg);
     }
   };
 
@@ -203,7 +207,7 @@ const launchTrame = (
     socket?.destroy();
     socket = null;
     server.close();
-    releaseTexture();
+    releaseTextures();
   };
   win.once('closed', result.close);
 

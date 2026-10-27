@@ -196,6 +196,7 @@ class RemoteControlledArea(HtmlElement):
         target_fps: float = 60.0,
         before_render: Callable[[], None] | None = None,
         on_disconnect: Callable[[], None] | None = None,
+        texture_count: int = 2,
     ):
         """
         Render ``render_window`` into a texture shared with the Electron app that
@@ -204,7 +205,9 @@ class RemoteControlledArea(HtmlElement):
         Call ``init_vtk_for_shared_textures()`` before creating ``render_window``.
         ``before_render`` is called before every frame and may schedule another render,
         e.g. to animate. ``on_disconnect`` is called when Electron goes away and
-        defaults to stopping the server.
+        defaults to stopping the server. ``texture_count`` is how many shared textures
+        VTK renders into in turn, so it can render the next frame while Electron shows the
+        previous ones. The returned handler's ``texture_count`` changes it at runtime.
         """
         from trame.app import asynchronous
 
@@ -229,6 +232,7 @@ class RemoteControlledArea(HtmlElement):
             target_fps=target_fps,
             on_disconnect=on_disconnect,
             before_render=before_render,
+            texture_count=texture_count,
         )
 
         def start(**_):

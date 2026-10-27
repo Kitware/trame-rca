@@ -3,9 +3,13 @@
 OS handles do not go through trame's websocket because that is wired to the Electron renderer
 process (ERP), which does not have access to the OS API needed to import a texture.
 
-Instead the scheduler tells the EMP about the shared texture and each finished frame over
+Instead the scheduler tells the EMP about the shared textures and each finished frame over
 trame_rca.electron.comm, and the EMP hands them to the renderer process. Size and input still
 come from the RemoteControlledArea through the RcaViewAdapter.
+
+The textures form a ring: VTK renders the next frame into the next texture while Electron
+still shows the previous ones, and only waits when the texture it's about to reuse is still
+held by Electron.
 
 Renders run on trame's event loop.
 """
@@ -41,6 +45,12 @@ logger = logging.getLogger(__name__)
 FRAME_DONE_TIMEOUT_S = 1.0
 
 
+def _check_texture_count(value):
+    if int(value) != value or value < 1:
+        raise ValueError(f"texture_count must be a positive integer, not {value!r}")
+    return int(value)
+
+
 def _report_failure(task):
     # Otherwise asyncio only reports it once the task is garbage collected.
     if not task.cancelled() and task.exception():
@@ -58,6 +68,7 @@ class RcaSharedTextureRenderScheduler:
         target_fps: float = 60.0,
         on_disconnect: Callable[[], None] | None = None,
         before_render: Callable[[], None] | None = None,
+        texture_count: int = 2,
     ):
         self._timer_render = profiler.Timer("rca.shared_texture.render")
         self._timer_flush = profiler.Timer("rca.shared_texture.flush")
@@ -73,10 +84,16 @@ class RcaSharedTextureRenderScheduler:
         self._push_callback = None
 
         self._conn = None
-        self._passport = None
+        self._texture_count = _check_texture_count(texture_count)
+        # The ring of shared textures
+        self._passports = []
+        # the frame_done of the last frame per shared texture.
+        self._slot_frames = []
+        self._next_slot = 0
+        # `seq`:`frame_done` future map valid until Electron fulfils with the "type":"frame_done" message.
+        self._frames_in_flight = {}
         self._passport_name_future = None
         self._seq = 0
-        self._frame_done = None
         # Renders asked for before start() wait in here.
         self._request_event = asyncio.Event()
         self._tasks = []
@@ -112,6 +129,19 @@ class RcaSharedTextureRenderScheduler:
     def target_fps(self, value):
         self._target_fps = value
 
+    @property
+    def texture_count(self):
+        """How many shared textures VTK renders into in turn. 1 waits for Electron after every frame."""
+        return self._texture_count
+
+    @texture_count.setter
+    def texture_count(self, value):
+        value = _check_texture_count(value)
+        if value != self._texture_count:
+            self._texture_count = value
+            # The ring is rebuilt before the next frame.
+            self.schedule_render()
+
     def set_push_callback(self, callback):
         # Frames go to the EMP, never through the push callback.
         self._push_callback = callback
@@ -142,9 +172,9 @@ class RcaSharedTextureRenderScheduler:
             task.cancel()
         if self._conn:
             self._conn.close()
-        if self._passport:
-            self._passport.release()
-            self._passport = None
+        for passport in self._passports:
+            passport.release()
+        self._passports = []
 
     async def _run(self, url):
         assert isinstance(self._rca, VtkRemoteControlledArea), (
@@ -172,39 +202,63 @@ class RcaSharedTextureRenderScheduler:
             if not self._sized:
                 continue
 
-            await self._update_texture(passport_name)
-            assert isinstance(self._passport, TexturePassport), "Passport unavailable!"
+            # Do not touch a texture in the ring until Electron is done reading it.
+            # Wait until a slot frees up in the ring.
+            await self._wait_for_slot(self._next_slot)
+            await self._update_textures(passport_name)
+            slot = self._next_slot
+            passport = self._passports[slot]
+            if (passport.width, passport.height) != tuple(
+                self._rca.render_window.GetSize()
+            ):
+                # Resized while waiting: rendering now would reallocate the shared texture.
+                self.schedule_render()
+                continue
+            self._next_slot = (slot + 1) % len(self._passports)
+
+            passport.attach()
             if self._before_render:
                 self._before_render()
             with self._timer_render:
                 self._rca.render_window.Render()
             with self._timer_flush:
                 self._rca.render_window.MakeCurrent()
-                await self._passport.flush_graphics_commands()
+                await passport.flush_graphics_commands()
 
-            # Backpressure: don't touch the texture until Electron is done reading it.
-            # Input keeps setting the request event meanwhile, so it renders once afterwards.
             seq = self._seq
             self._seq += 1
-            self._frame_done = asyncio.get_running_loop().create_future()
+            frame_done = asyncio.get_running_loop().create_future()
+            self._slot_frames[slot] = frame_done
+            self._frames_in_flight[seq] = frame_done
             await self._conn.send(
-                {"type": "frame", "seq": seq, "timestamp_us": int(time.time() * 1e6)}
+                {
+                    "type": "frame",
+                    "seq": seq,
+                    "slot": slot,
+                    "timestamp_us": int(time.time() * 1e6),
+                }
             )
-            try:
-                await asyncio.wait_for(self._frame_done, FRAME_DONE_TIMEOUT_S)
-            except asyncio.TimeoutError:
-                logger.warning(
-                    "frame %d: no frame_done within %ss, continuing",
-                    seq,
-                    FRAME_DONE_TIMEOUT_S,
-                )
-            self._frame_done = None
             # Pace against fixed frame clock held in `next_frame`
             next_frame = max(next_frame + period, time.monotonic())
             await asyncio.sleep(max(0.0, next_frame - time.monotonic()))
 
-    async def _update_texture(self, passport_name):
-        """(Re)allocate the shared texture when the render window's size changed."""
+    async def _wait_for_slot(self, slot):
+        """Wait until Electron released the last frame rendered into the texture at ``slot``."""
+        frame_done = self._slot_frames[slot] if slot < len(self._slot_frames) else None
+        if frame_done is None or frame_done.done():
+            return
+        try:
+            # shield: a frame_done arriving late must still find its future.
+            await asyncio.wait_for(asyncio.shield(frame_done), FRAME_DONE_TIMEOUT_S)
+        except asyncio.TimeoutError:
+            logger.warning(
+                "texture %d: no frame_done within %ss, continuing",
+                slot,
+                FRAME_DONE_TIMEOUT_S,
+            )
+
+    async def _update_textures(self, passport_name):
+        """(Re)allocate the shared textures when the render window's size or their count changed."""
         assert isinstance(self._rca, VtkRemoteControlledArea), (
             "SharedTexture scheduler only works with VTK render windows!"
         )
@@ -212,24 +266,30 @@ class RcaSharedTextureRenderScheduler:
             "Connection to EMP is uninitialized!"
         )
         width, height = self._rca.render_window.GetSize()
-        if self._passport and (self._passport.width, self._passport.height) == (
-            width,
-            height,
+        count = self._texture_count
+        if len(self._passports) == count and all(
+            (p.width, p.height) == (width, height) for p in self._passports
         ):
             return
-        if self._passport is None:
-            # The first render creates the context and the framebuffers the passport patches.
+        if not self._passports:
+            # The first render will create the context and the framebuffers.
             self._rca.render_window.Render()
             self._rca.render_window.MakeCurrent()
         passport_class = texture_passport_class(passport_name)
-        old, self._passport = (
-            self._passport,
-            passport_class(self._rca.render_window, width, height),
+        old, self._passports = (
+            self._passports,
+            [
+                passport_class(self._rca.render_window, width, height)
+                for _ in range(count)
+            ],
         )
-        if old:
-            # Frames still in flight hold their own imports in Electron.
-            old.release()
-        await self._conn.send(self._passport.to_json())
+        for passport in old:
+            passport.release()
+        self._slot_frames = [None] * count
+        self._next_slot = 0
+        for slot, passport in enumerate(self._passports):
+            assert isinstance(passport, TexturePassport)
+            await self._conn.send({**passport.to_json(), "slot": slot, "slots": count})
 
     async def _read(self):
         assert isinstance(self._conn, LineConnection), (
@@ -249,12 +309,9 @@ class RcaSharedTextureRenderScheduler:
                         return
                     self._passport_name_future.set_result(msg["passport"])
                 elif msg["type"] == "frame_done":
-                    if (
-                        msg["seq"] == self._seq - 1
-                        and self._frame_done
-                        and not self._frame_done.done()
-                    ):
-                        self._frame_done.set_result(None)
+                    frame_done = self._frames_in_flight.pop(msg["seq"], None)
+                    if frame_done and not frame_done.done():
+                        frame_done.set_result(None)
                     if msg.get("dropped"):
                         # The page never processed it: e.g. it was still loading or busy..
                         logger.info("frame %d dropped, rendering again", msg["seq"])

@@ -6,10 +6,15 @@ Talks newline-delimited JSON to the Electron main process (EMP) on 127.0.0.1:<po
 
     <- {"type":"hello", "protocol": N, "passport": name}    at start, the texture passport to use
     -> {"type":"server_ready", "protocol": N, "url": url}   once trame serves its page
-    -> {"type":"texture", ...}                              at start and after every resize
-    -> {"type":"frame", "seq": n, "timestamp_us": t}        after every render (finished on the GPU)
+    -> {"type":"texture", "slot": i, "slots": k, ...}       at start, after every resize and
+                                                            change of texture count, one per slot
+    -> {"type":"frame", "seq": n, "slot": i, "timestamp_us": t}
+                                                            after every render into slot i
+                                                            (finished on the GPU)
     <- {"type":"frame_done", "seq": n}                      when Electron released the texture
     <- {"type":"frame_done", "seq": n, "dropped": true}     when the frame didn't reach the ERP
+
+The k textures form a ring: several frames can be in flight, one per slot. Slots past k are gone.
 
 Everything else (size, input, app state) goes from the renderer process to trame over its websocket.
 

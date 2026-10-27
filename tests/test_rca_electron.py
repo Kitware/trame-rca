@@ -103,22 +103,32 @@ async def test_scheduler_shares_frames(a_render_window, fake_passport):
         # As the RcaViewAdapter does when the canvas reports its size.
         scheduler.rca.process_resize_event(300, 300)
         scheduler.schedule_render()
-        assert await emp.recv() == {"type": "texture", "width": 300, "height": 300}
+        # One texture per slot of the ring, two by default.
+        for slot in range(2):
+            assert await emp.recv() == {
+                "type": "texture",
+                "width": 300,
+                "height": 300,
+                "slot": slot,
+                "slots": 2,
+            }
         frame = await emp.recv()
-        assert frame["type"] == "frame" and frame["seq"] == 0
+        assert frame["type"] == "frame" and frame["seq"] == 0 and frame["slot"] == 0
         await emp.send({"type": "frame_done", "seq": 0})
 
-        # A resize makes a new texture and releases the old one.
+        # A resize makes new textures and releases the old ones.
         scheduler.rca.process_resize_event(200, 100)
         scheduler.schedule_render()
-        assert await emp.recv() == {"type": "texture", "width": 200, "height": 100}
-        assert FakePassport.released == [(300, 300)]
-        assert (await emp.recv())["seq"] == 1
+        for slot in range(2):
+            assert (await emp.recv())["width"] == 200
+        assert FakePassport.released == [(300, 300)] * 2
+        frame = await emp.recv()
+        assert frame["seq"] == 1 and frame["slot"] == 0
 
         # Electron going away closes the scheduler.
         emp.close()
         await asyncio.wait_for(disconnected.wait(), TIMEOUT_S)
-        assert FakePassport.released == [(300, 300), (200, 100)]
+        assert FakePassport.released == [(300, 300)] * 2 + [(200, 100)] * 2
     finally:
         await scheduler.close()
         emp.close()
@@ -154,12 +164,61 @@ async def test_scheduler_renders_dropped_frames_again(a_render_window, fake_pass
         scheduler.rca.process_resize_event(300, 300)
         scheduler.schedule_render()
         assert (await emp.recv())["type"] == "texture"
+        assert (await emp.recv())["type"] == "texture"
         assert (await emp.recv())["seq"] == 0
 
         # e.g. sendSharedTexture timed out while the page was loading.
         await emp.send({"type": "frame_done", "seq": 0, "dropped": True})
         frame = await emp.recv()
         assert frame["type"] == "frame" and frame["seq"] == 1
+    finally:
+        await scheduler.close()
+        emp.close()
+
+
+@pytest.mark.asyncio
+async def test_scheduler_texture_ring(a_render_window, fake_passport):
+    emp = FakeEmp({"type": "hello", "protocol": PROTOCOL_VERSION, "passport": "fake"})
+    port = await emp.start()
+    scheduler = RcaSharedTextureRenderScheduler(a_render_window, port, texture_count=3)
+    try:
+        scheduler.start(url="http://127.0.0.1:1234/")
+        assert (await emp.recv())["type"] == "server_ready"
+        scheduler.rca.process_resize_event(300, 300)
+        for _ in range(3):
+            assert (await emp.recv())["slots"] == 3
+
+        # Up to one frame in flight per texture, without waiting for frame_done.
+        for seq in range(3):
+            scheduler.schedule_render()
+            frame = await emp.recv()
+            assert (frame["seq"], frame["slot"]) == (seq, seq)
+
+        # Back to slot 0: waits until Electron released its frame.
+        scheduler.schedule_render()
+        with pytest.raises(asyncio.TimeoutError):
+            await asyncio.wait_for(emp.reader.readline(), 0.2)
+        await emp.send({"type": "frame_done", "seq": 0})
+        frame = await emp.recv()
+        assert (frame["seq"], frame["slot"]) == (3, 0)
+        for seq in range(1, 4):
+            await emp.send({"type": "frame_done", "seq": seq})
+
+        # Changing the count at runtime rebuilds the ring before the next frame.
+        scheduler.texture_count = 1
+        assert await emp.recv() == {
+            "type": "texture",
+            "width": 300,
+            "height": 300,
+            "slot": 0,
+            "slots": 1,
+        }
+        assert len(FakePassport.released) == 3
+        frame = await emp.recv()
+        assert (frame["seq"], frame["slot"]) == (4, 0)
+
+        with pytest.raises(ValueError):
+            scheduler.texture_count = 0
     finally:
         await scheduler.close()
         emp.close()

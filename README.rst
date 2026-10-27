@@ -156,6 +156,15 @@ Windows (D3D11 NT handles) and Linux under Wayland (dma-buf).
     view = rca.RemoteControlledArea(display="shared-texture")
     view_handler = view.create_electron_handler(render_window)
 
+VTK renders into a ring of shared textures, by default this is 2. This allows VTK
+to draw the next frame, while Electron still shows the previous one. If you're on a
+mid-tier to high-end GPU, you normally do not need to use more than 1 texture because
+VTK can render faster. However, on low-end hardware, it's more efficient to render the
+N+k frames while electron is presenting the N'th frame. This hides the cost of each render.
+The  ``create_electron_handler(..., texture_count=n)`` sets the size of this ring texture container,
+and you can change it at runtime with ``view_handler.texture_count = n``. A value of 1
+waits for Electron after every frame.
+
 You can try our code example:
 
 .. code-block:: console
