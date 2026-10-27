@@ -54,7 +54,7 @@ def full_hd_scene():
     interactor.SetRenderWindow(render_window)
 
     rca = VtkRemoteControlledArea(render_window)
-    rca_render = rca._render
+    rca_render = rca.render
 
     def render():
         rca_render()
@@ -68,10 +68,10 @@ def full_hd_scene():
         rendered.append(True)
         render()
 
-    rca._render = recording_render
+    rca.render = recording_render
     rca.img_cols_rows
-    assert rendered, "img_cols_rows no longer renders through _render"
-    rca._render = lambda: None
+    assert rendered, "img_cols_rows no longer renders through render()"
+    rca.render = lambda: None
     yield rca, render, renderer.GetActiveCamera()
     render_window.Finalize()
 
