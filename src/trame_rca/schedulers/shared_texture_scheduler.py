@@ -4,7 +4,8 @@ OS handles do not go through trame's websocket because that is wired to the Elec
 process (ERP), which does not have access to the OS API needed to import a texture.
 
 Instead the scheduler tells the EMP about the shared textures and each finished frame over
-trame_rca.electron.comm, and the EMP hands them to the renderer process. Size and input still
+trame_rca.electron.comm, and the EMP hands them to the renderer process. All the schedulers of
+a server share one connection to the EMP, and tag their messages with their view's name. Size and input still
 come from the RemoteControlledArea through the RcaViewAdapter.
 
 The textures form a ring: VTK renders the next frame into the next texture while Electron
@@ -15,8 +16,6 @@ Renders run on trame's event loop.
 """
 
 from __future__ import annotations
-from asyncio.futures import Future
-
 import asyncio
 import logging
 import time
@@ -28,11 +27,7 @@ if TYPE_CHECKING:
 from trame.app import asynchronous
 from trame_common.utils import profiler
 
-from trame_rca.electron.comm import (
-    PROTOCOL_VERSION,
-    LineConnection,
-    check_protocol,
-)
+from trame_rca.electron.comm import EmpClient
 from trame_rca.electron.passports import texture_passport_class, TexturePassport
 from trame_rca.rca import (
     RemoteControlledAreaProtocol,
@@ -69,7 +64,9 @@ class RcaSharedTextureRenderScheduler:
         on_disconnect: Callable[[], None] | None = None,
         before_render: Callable[[], None] | None = None,
         texture_count: int = 2,
+        view: str = "default",
     ):
+        """``view`` is the name of the RemoteControlledArea that shows the frames."""
         self._timer_render = profiler.Timer("rca.shared_texture.render")
         self._timer_flush = profiler.Timer("rca.shared_texture.flush")
         self._rca = window_wrapper(window)
@@ -77,13 +74,14 @@ class RcaSharedTextureRenderScheduler:
             "SharedTexture scheduler only works with VTK render windows!"
         )
         self._emp_port = emp_port
+        self._view = view
         self._target_fps = target_fps
         self._on_disconnect = on_disconnect
         # Called before every frame, e.g. to animate the scene. It may schedule_render() again.
         self._before_render = before_render
         self._push_callback = None
 
-        self._conn = None
+        self._client: EmpClient | None = None
         self._texture_count = _check_texture_count(texture_count)
         # The ring of shared textures
         self._passports = []
@@ -92,7 +90,6 @@ class RcaSharedTextureRenderScheduler:
         self._next_slot = 0
         # `seq`:`frame_done` future map valid until Electron fulfils with the "type":"frame_done" message.
         self._frames_in_flight = {}
-        self._passport_name_future = None
         self._seq = 0
         # Renders asked for before start() wait in here.
         self._request_event = asyncio.Event()
@@ -120,6 +117,10 @@ class RcaSharedTextureRenderScheduler:
     @property
     def rca(self):
         return self._rca
+
+    @property
+    def view(self):
+        return self._view
 
     @property
     def target_fps(self):
@@ -155,8 +156,11 @@ class RcaSharedTextureRenderScheduler:
     def start(self, url: str | None = None, **_):
         """Connect to the EMP and start rendering. Call once trame's event loop runs.
 
-        ``url`` is the page the EMP should load: the one trame serves.
+        ``url`` is the page the EMP should load: the one trame serves. Only the first
+        scheduler to connect tells the EMP about it.
         """
+        self._client = EmpClient.for_port(self._emp_port)
+        self._client.add_view(self._view, self._on_frame_done, self._on_client_closed)
         self._start_task(self._run(url))
 
     def _start_task(self, coro):
@@ -169,9 +173,10 @@ class RcaSharedTextureRenderScheduler:
             return
         self._is_closing = True
         for task in self._tasks:
-            task.cancel()
-        if self._conn:
-            self._conn.close()
+            if task is not asyncio.current_task():
+                task.cancel()
+        if self._client:
+            self._client.remove_view(self._view)
         for passport in self._passports:
             passport.release()
         self._passports = []
@@ -180,18 +185,13 @@ class RcaSharedTextureRenderScheduler:
         assert isinstance(self._rca, VtkRemoteControlledArea), (
             "SharedTexture scheduler only works with VTK render windows!"
         )
-        self._passport_name_future = asyncio.get_running_loop().create_future()
-        self._conn = await LineConnection.open(self._emp_port)
-        logger.info("connected to the Electron main process on port %d", self._emp_port)
-        self._start_task(self._read())
+        assert isinstance(self._client, EmpClient), "start() did not run!"
         try:
-            passport_name = await self._passport_name_future
+            passport_name = await self._client.connect()
         except Exception:
             await self._disconnect()
             raise
-        await self._conn.send(
-            {"type": "server_ready", "protocol": PROTOCOL_VERSION, "url": url}
-        )
+        await self._client.server_ready(url)
         next_frame = 0
         period = 1.0 / self._target_fps
 
@@ -230,9 +230,10 @@ class RcaSharedTextureRenderScheduler:
             frame_done = asyncio.get_running_loop().create_future()
             self._slot_frames[slot] = frame_done
             self._frames_in_flight[seq] = frame_done
-            await self._conn.send(
+            await self._client.send(
                 {
                     "type": "frame",
+                    "view": self._view,
                     "seq": seq,
                     "slot": slot,
                     "timestamp_us": int(time.time() * 1e6),
@@ -262,9 +263,7 @@ class RcaSharedTextureRenderScheduler:
         assert isinstance(self._rca, VtkRemoteControlledArea), (
             "SharedTexture scheduler only works with VTK render windows!"
         )
-        assert isinstance(self._conn, LineConnection), (
-            "Connection to EMP is uninitialized!"
-        )
+        assert isinstance(self._client, EmpClient), "start() did not run!"
         width, height = self._rca.render_window.GetSize()
         count = self._texture_count
         if len(self._passports) == count and all(
@@ -289,43 +288,33 @@ class RcaSharedTextureRenderScheduler:
         self._next_slot = 0
         for slot, passport in enumerate(self._passports):
             assert isinstance(passport, TexturePassport)
-            await self._conn.send({**passport.to_json(), "slot": slot, "slots": count})
+            await self._client.send(
+                {
+                    **passport.to_json(),
+                    "view": self._view,
+                    "slot": slot,
+                    "slots": count,
+                }
+            )
 
-    async def _read(self):
-        assert isinstance(self._conn, LineConnection), (
-            "Connection to EMP is uninitialized!"
-        )
-        assert isinstance(self._passport_name_future, Future), (
-            "Passport name future was not created!"
-        )
-        try:
-            while True:
-                msg = await self._conn.recv()
-                if msg["type"] == "hello":
-                    try:
-                        check_protocol(msg)
-                    except Exception as e:
-                        self._passport_name_future.set_exception(e)
-                        return
-                    self._passport_name_future.set_result(msg["passport"])
-                elif msg["type"] == "frame_done":
-                    frame_done = self._frames_in_flight.pop(msg["seq"], None)
-                    if frame_done and not frame_done.done():
-                        frame_done.set_result(None)
-                    if msg.get("dropped"):
-                        # The page never processed it: e.g. it was still loading or busy..
-                        logger.info("frame %d dropped, rendering again", msg["seq"])
-                        self.schedule_render()
-        except (EOFError, ConnectionError):
-            logger.info("the Electron main process disconnected")
-            if not self._passport_name_future.done():
-                self._passport_name_future.set_exception(
-                    ConnectionError("disconnected before the hello message")
-                )
-                return
-            await self._disconnect()
+    def _on_frame_done(self, msg):
+        frame_done = self._frames_in_flight.pop(msg["seq"], None)
+        if frame_done and not frame_done.done():
+            frame_done.set_result(None)
+        if msg.get("dropped"):
+            # The page never processed it: e.g. it was still loading or busy..
+            logger.info(
+                "view %s: frame %d dropped, rendering again", self._view, msg["seq"]
+            )
+            self.schedule_render()
+
+    def _on_client_closed(self):
+        if not self._is_closing:
+            self._start_task(self._disconnect())
 
     async def _disconnect(self):
+        if self._is_closing:
+            return
         await self.close()
         if self._on_disconnect:
             self._on_disconnect()

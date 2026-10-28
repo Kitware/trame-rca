@@ -109,12 +109,14 @@ async def test_scheduler_shares_frames(a_render_window, fake_passport):
                 "type": "texture",
                 "width": 300,
                 "height": 300,
+                "view": "default",
                 "slot": slot,
                 "slots": 2,
             }
         frame = await emp.recv()
         assert frame["type"] == "frame" and frame["seq"] == 0 and frame["slot"] == 0
-        await emp.send({"type": "frame_done", "seq": 0})
+        assert frame["view"] == "default"
+        await emp.send({"type": "frame_done", "view": "default", "seq": 0})
 
         # A resize makes new textures and releases the old ones.
         scheduler.rca.process_resize_event(200, 100)
@@ -168,7 +170,9 @@ async def test_scheduler_renders_dropped_frames_again(a_render_window, fake_pass
         assert (await emp.recv())["seq"] == 0
 
         # e.g. sendSharedTexture timed out while the page was loading.
-        await emp.send({"type": "frame_done", "seq": 0, "dropped": True})
+        await emp.send(
+            {"type": "frame_done", "view": "default", "seq": 0, "dropped": True}
+        )
         frame = await emp.recv()
         assert frame["type"] == "frame" and frame["seq"] == 1
     finally:
@@ -198,11 +202,11 @@ async def test_scheduler_texture_ring(a_render_window, fake_passport):
         scheduler.schedule_render()
         with pytest.raises(asyncio.TimeoutError):
             await asyncio.wait_for(emp.reader.readline(), 0.2)
-        await emp.send({"type": "frame_done", "seq": 0})
+        await emp.send({"type": "frame_done", "view": "default", "seq": 0})
         frame = await emp.recv()
         assert (frame["seq"], frame["slot"]) == (3, 0)
         for seq in range(1, 4):
-            await emp.send({"type": "frame_done", "seq": seq})
+            await emp.send({"type": "frame_done", "view": "default", "seq": seq})
 
         # Changing the count at runtime rebuilds the ring before the next frame.
         scheduler.texture_count = 1
@@ -210,6 +214,7 @@ async def test_scheduler_texture_ring(a_render_window, fake_passport):
             "type": "texture",
             "width": 300,
             "height": 300,
+            "view": "default",
             "slot": 0,
             "slots": 1,
         }
@@ -221,4 +226,97 @@ async def test_scheduler_texture_ring(a_render_window, fake_passport):
             scheduler.texture_count = 0
     finally:
         await scheduler.close()
+        emp.close()
+
+
+@pytest.fixture
+def two_render_windows():
+    from vtkmodules.vtkRenderingCore import (
+        vtkRenderer,
+        vtkRenderWindow,
+        vtkRenderWindowInteractor,
+    )
+
+    windows = []
+    for _ in range(2):
+        window = vtkRenderWindow()
+        window.AddRenderer(vtkRenderer())
+        window.ShowWindowOff()
+        vtkRenderWindowInteractor().SetRenderWindow(window)
+        windows.append(window)
+    yield windows
+    for window in windows:
+        window.Finalize()
+
+
+@pytest.mark.asyncio
+async def test_schedulers_share_the_connection(two_render_windows, fake_passport):
+    emp = FakeEmp({"type": "hello", "protocol": PROTOCOL_VERSION, "passport": "fake"})
+    connections = []
+    on_connect = emp._on_connect
+
+    async def count_connections(reader, writer):
+        connections.append(writer)
+        if len(connections) == 1:
+            await on_connect(reader, writer)
+
+    emp._on_connect = count_connections
+    port = await emp.start()
+    disconnected = {"a": asyncio.Event(), "b": asyncio.Event()}
+    schedulers = {
+        view: RcaSharedTextureRenderScheduler(
+            window, port, view=view, on_disconnect=disconnected[view].set
+        )
+        for view, window in zip(("a", "b"), two_render_windows)
+    }
+    try:
+        for scheduler in schedulers.values():
+            scheduler.start(url="http://127.0.0.1:1234/")
+        # The page is loaded once, for both views.
+        assert (await emp.recv())["type"] == "server_ready"
+
+        schedulers["a"].rca.process_resize_event(300, 300)
+        schedulers["b"].rca.process_resize_event(200, 100)
+        textures = {}
+        frames = {}
+        while len(frames) < 2:
+            msg = await emp.recv()
+            assert msg["type"] in ("texture", "frame")
+            if msg["type"] == "texture":
+                textures.setdefault(msg["view"], []).append(msg)
+            else:
+                frames[msg["view"]] = msg
+        assert len(connections) == 1
+        assert [t["width"] for t in textures["a"]] == [300, 300]
+        assert [t["width"] for t in textures["b"]] == [200, 200]
+        # seq counts per view.
+        assert frames["a"]["seq"] == frames["b"]["seq"] == 0
+
+        # A frame_done only reaches its own view.
+        await emp.send({"type": "frame_done", "view": "b", "seq": 0, "dropped": True})
+        frame = await emp.recv()
+        assert (frame["view"], frame["seq"]) == ("b", 1)
+        with pytest.raises(asyncio.TimeoutError):
+            await asyncio.wait_for(emp.reader.readline(), 0.2)
+
+        # Two views can't share a name.
+        with pytest.raises(ValueError):
+            RcaSharedTextureRenderScheduler(
+                two_render_windows[0], port, view="a"
+            ).start()
+
+        # Closing one view keeps the connection of the other.
+        await schedulers["a"].close()
+        schedulers["b"].schedule_render()
+        frame = await emp.recv()
+        assert frame["view"] == "b"
+        assert not disconnected["b"].is_set()
+
+        # Electron going away disconnects the remaining views.
+        emp.close()
+        await asyncio.wait_for(disconnected["b"].wait(), TIMEOUT_S)
+        assert not disconnected["a"].is_set()
+    finally:
+        for scheduler in schedulers.values():
+            await scheduler.close()
         emp.close()

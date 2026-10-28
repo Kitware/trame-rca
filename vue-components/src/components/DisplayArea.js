@@ -40,7 +40,7 @@ export default {
       <media-source-display-area v-if="display === 'media-source'" :name="name" :origin="origin" />
       <video-decoder-display-area v-if="display === 'video-decoder'" :name="name" :origin="origin" />
       <raw-image-display-area v-if="display === 'raw-image'" :name="name" :origin="origin" :imageStyle="imageStyle" />
-      <shared-texture-display-area v-if="display === 'shared-texture'" @stats="$emit('stats', $event)" />
+      <shared-texture-display-area v-if="display === 'shared-texture'" :name="name" @stats="$emit('stats', $event)" />
     </div>
   `,
 };

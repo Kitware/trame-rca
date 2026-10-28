@@ -36,7 +36,7 @@ class TextureHandle {
       const { lookupSurface, describeSurface, surfaceHandle } = this.dma;
       this.surfaceRef = lookupSurface(msg.ioSurfaceId);
       log.info(
-        `[trame-rca] texture ${msg.width}x${msg.height} (${msg.pixelFormat}) IOSurface id=${msg.ioSurfaceId} ${describeSurface(this.surfaceRef)}`,
+        `[trame-rca] view ${msg.view}: texture ${msg.width}x${msg.height} (${msg.pixelFormat}) IOSurface id=${msg.ioSurfaceId} ${describeSurface(this.surfaceRef)}`,
       );
       return { ioSurface: surfaceHandle(this.surfaceRef) };
     }
@@ -45,14 +45,14 @@ class TextureHandle {
       const { dupHandleFromProcess, handleBuffer } = this.dma;
       this.localHandle = dupHandleFromProcess(msg.pid, msg.ntHandle);
       log.info(
-        `[trame-rca] texture ${msg.width}x${msg.height} (${msg.pixelFormat}) handle 0x${msg.ntHandle.toString(16)} -> 0x${this.localHandle.toString(16)}`,
+        `[trame-rca] view ${msg.view}: texture ${msg.width}x${msg.height} (${msg.pixelFormat}) handle 0x${msg.ntHandle.toString(16)} -> 0x${this.localHandle.toString(16)}`,
       );
       return { ntHandle: handleBuffer(this.localHandle) };
     }
     // Duplicate the producer's dma-buf fds into this process.
     this.localFds = msg.planes.map((p) => this.dma.dupFdFromProcess(msg.pid, p.fd));
     log.info(
-      `[trame-rca] texture ${msg.width}x${msg.height} ${msg.fourcc} (${msg.pixelFormat}) modifier=${msg.modifier} fds ${msg.planes.map((p) => p.fd)} -> ${this.localFds}`,
+      `[trame-rca] view ${msg.view}: texture ${msg.width}x${msg.height} ${msg.fourcc} (${msg.pixelFormat}) modifier=${msg.modifier} fds ${msg.planes.map((p) => p.fd)} -> ${this.localFds}`,
     );
     return protocol.nativePixmap(msg, this.localFds);
   }
@@ -68,7 +68,7 @@ class TextureHandle {
 }
 
 // Spawn the trame server and load its page in `win` once it is ready. The page's
-// shared-texture views then show the texture the server renders into.
+// shared-texture views then show the textures the server renders into, one ring per view.
 //
 // `command` is the executable to run (a python interpreter, a frozen backend, ...) and
 // `args` its arguments, e.g. ['app.py'].
@@ -82,8 +82,8 @@ const launchTrame = (
 ) => {
   if (!command) throw new Error('launchTrame: `command` is required');
   let socket = null;
-  // The producer's ring of textures, by slot.
-  let textures = [];
+  // The producer's rings of textures, by view name, then by slot.
+  const textures = new Map();
   // This platform's dma module, loaded before the server is spawned.
   let dma = null;
   let closed = false;
@@ -93,9 +93,17 @@ const launchTrame = (
     if (socket && !socket.destroyed) socket.write(protocol.encode(msg));
   };
 
-  const releaseTextures = (fromSlot = 0) => {
-    textures.slice(fromSlot).forEach((t) => t?.release());
-    textures = textures.slice(0, fromSlot);
+  // Release the textures of `view` from `fromSlot` on.
+  const releaseTextures = (view, fromSlot = 0) => {
+    const ring = textures.get(view) ?? [];
+    ring.slice(fromSlot).forEach((t) => t?.release());
+    ring.length = Math.min(ring.length, fromSlot);
+    if (!ring.length) textures.delete(view);
+  };
+
+  const releaseAllTextures = () => {
+    textures.forEach((ring) => ring.forEach((t) => t?.release()));
+    textures.clear();
   };
 
   const forwardFrame = async (info, msg) => {
@@ -104,12 +112,12 @@ const launchTrame = (
     const frameDone = () => {
       if (done) return;
       done = true;
-      send({ type: 'frame_done', seq: msg.seq });
+      send({ type: 'frame_done', view: msg.view, seq: msg.seq });
     };
     const frameDropped = () => {
       if (done) return;
       done = true;
-      send({ type: 'frame_done', seq: msg.seq, dropped: true });
+      send({ type: 'frame_done', view: msg.view, seq: msg.seq, dropped: true });
     };
     let imported = null;
     try {
@@ -118,15 +126,16 @@ const launchTrame = (
         textureInfo: { ...info, timestamp: msg.timestamp_us },
         allReferencesReleased: frameDone,
       });
-      await sharedTexture.sendSharedTexture({
-        frame: win.webContents.mainFrame,
-        importedSharedTexture: imported,
-      });
+      // The preload's receiver gets the view's name as its second argument.
+      await sharedTexture.sendSharedTexture(
+        { frame: win.webContents.mainFrame, importedSharedTexture: imported },
+        msg.view,
+      );
     } catch (err) {
       // sendSharedTexture uses a 1000ms timeout. If the ERP is still busy loading the page,
       // or if some other error occurred, the page would never have shown this frame, so ask
       // for it again.
-      log.warn(`[trame-rca] frame ${msg.seq} dropped: ${err.message}`);
+      log.warn(`[trame-rca] view ${msg.view}: frame ${msg.seq} dropped: ${err.message}`);
       frameDropped();
     } finally {
       imported?.release();
@@ -146,17 +155,19 @@ const launchTrame = (
       win.loadURL(msg.url);
     } else if (msg.type === 'texture') {
       try {
-        const { slot, slots } = msg;
-        textures[slot]?.release();
-        textures[slot] = new TextureHandle(msg, dma, log);
+        const { view, slot, slots } = msg;
+        if (!textures.has(view)) textures.set(view, []);
+        const ring = textures.get(view);
+        ring[slot]?.release();
+        ring[slot] = new TextureHandle(msg, dma, log);
         // release textures beyond `slots` to handle shrink
-	releaseTextures(slots);
+        releaseTextures(view, slots);
       } catch (err) {
         log.error('[trame-rca] failed to open the texture:', err);
         conn.destroy();
       }
     } else if (msg.type === 'frame') {
-      const texture = textures[msg.slot];
+      const texture = textures.get(msg.view)?.[msg.slot];
       if (texture) forwardFrame(texture.info, msg);
     }
   };
@@ -207,7 +218,7 @@ const launchTrame = (
     socket?.destroy();
     socket = null;
     server.close();
-    releaseTextures();
+    releaseAllTextures();
   };
   win.once('closed', result.close);
 

@@ -208,6 +208,8 @@ class RemoteControlledArea(HtmlElement):
         defaults to stopping the server. ``texture_count`` is how many shared textures
         VTK renders into in turn, so it can render the next frame while Electron shows the
         previous ones. The returned handler's ``texture_count`` changes it at runtime.
+
+        Each shared-texture view of a page needs its own ``name``.
         """
         from trame.app import asynchronous
 
@@ -233,6 +235,7 @@ class RemoteControlledArea(HtmlElement):
             on_disconnect=on_disconnect,
             before_render=before_render,
             texture_count=texture_count,
+            view=self.name,
         )
 
         def start(**_):
@@ -364,13 +367,16 @@ class RawImageDisplayArea(HtmlElement):
 
 
 class SharedTextureDisplayArea(HtmlElement):
-    """The canvas trame-rca-electron draws the shared texture into, once a frame."""
+    """The canvas trame-rca-electron draws the shared texture of view ``name`` into, once a frame."""
 
     def __init__(self, **kwargs):
         super().__init__(
             "shared-texture-display-area",
             **kwargs,
         )
+        self._attr_names += [
+            "name",
+        ]
         self._event_names += [
             "stats",
         ]

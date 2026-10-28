@@ -18,7 +18,7 @@ app.whenReady().then(() => {
   launchTrame(win, {
     command: python,
     args: [fileURLToPath(new URL('../app.py', import.meta.url)), ...appArgs],
-    onStats: (s) => console.log(`[renderer] frames=${s.frames} fps=${s.fps} ${s.info}`),
+    onStats: (s) => console.log(`[renderer] ${s.view} frames=${s.frames} fps=${s.fps} ${s.info}`),
     onExit: () => app.quit(),
   });
 });

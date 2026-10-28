@@ -24,7 +24,7 @@ and loads the page in `win` once trame serves it. Options:
 - `command`, `args`, `cwd`, `env`: the trame server to run. Any executable works: a python
   interpreter and a script, a frozen backend, etc.
 - `onExit(code, signal)`: the server exited.
-- `onStats({ fps, frames, info })`: once a second.
+- `onStats({ view, fps, frames, info })`: once a second, per shared-texture view that drew frames.
 - `log`: defaults to `console`.
 
 It returns `{ process, close }`. `close()` kills the server; it is called when `win` closes.

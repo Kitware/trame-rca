@@ -20,7 +20,7 @@ app.whenReady().then(() => {
       '--electron-versions',
       JSON.stringify({ electron, chrome, node, v8 }),
     ],
-    onStats: (s) => console.log(`[renderer] frames=${s.frames} fps=${s.fps} ${s.info}`),
+    onStats: (s) => console.log(`[renderer] ${s.view} frames=${s.frames} fps=${s.fps} ${s.info}`),
     onExit: () => app.quit(),
   });
 });

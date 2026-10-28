@@ -9,6 +9,9 @@ through the full pipeline:
     numpy -> vtk arrays -> render (upload to the GPU + draw) -> shared texture
           -> Electron composites the frame -> "frame_done" back to Python
 
+--second-view adds a second shared-texture view of the same cloud next to the first, and
+spins the camera of both views, in opposite directions.
+
 Started by the Electron app in ./electron, see the README. app_native.py renders the
 same scene in a desktop window, as a baseline.
 """
@@ -48,6 +51,8 @@ ROLLING_FRAMES = 30  # frames averaged in the live panel
 UI_REFRESH_S = 0.25
 BYTES_PER_POINT = 3 * 4 + 3 * 1  # float32 xyz + uint8 rgb
 DISABLE_SHIFT_SCALE = 0  # vtkOpenGLVertexBufferObject::ShiftScaleMethod
+RADII = (2.0, 1.0, 0.5)  # standard deviation of the cloud along x, y and z
+SPIN_DEG_PER_S = 30.0  # camera spin with --second-view
 
 STAGES = [
     ("generate", "app work: swap in the next precomputed frame, or compute it"),
@@ -91,10 +96,12 @@ class PointCloud:
     points the polydata at the next frame's arrays: the app work drops to ~0 while every
     frame still uploads new data. They play back and forth so the loop has no jump.
     With ``n_frames`` = 0 each update computes a new frame, in place.
+    The points spread out along x, y and z by ``radii``: an ellipsoidal cloud.
     """
 
-    def __init__(self, n_points, n_frames=8, seed=0):
+    def __init__(self, n_points, n_frames=8, seed=0, radii=RADII):
         self.rng = np.random.default_rng(seed)
+        self.radii = np.asarray(radii, dtype=np.float32)
         self.polydata = vtkPolyData()
         self.n_points = 0
         self.n_frames = n_frames
@@ -111,6 +118,7 @@ class PointCloud:
             positions[n_old:] = self.rng.standard_normal(
                 (n_points - n_old, 3), dtype=np.float32
             )
+            positions[n_old:] *= self.radii
         colors = np.empty((n_points, 3), dtype=np.uint8)
         self._noise = np.empty_like(positions)
         self.n_points = n_points
@@ -152,9 +160,10 @@ class PointCloud:
         self._show(self.frames[i if i < k else period - i])
 
     def _walk(self, positions, colors, step=0.02, pull=0.995):
-        # Random walk with a weak pull toward the origin so the cloud stays put.
+        # Random walk with a weak pull toward the origin so the cloud stays put. The steps
+        # scale with the radii too, so the walk keeps the cloud's shape.
         self.rng.standard_normal(out=self._noise, dtype=np.float32)
-        self._noise *= step
+        self._noise *= step * self.radii
         positions *= pull
         positions += self._noise
         colors.reshape(-1)[:] = np.frombuffer(self.rng.bytes(colors.size), np.uint8)
@@ -209,6 +218,29 @@ def create_vtk_pipeline(polydata):
         interactor_style=vtkInteractorStyleTrackballCamera(),
     )
     return render_window
+
+
+class CameraSpinner:
+    """Turns the camera of a render window around its view up at a steady rate.
+
+    The angle follows the elapsed time, so views rendering at different rates spin alike.
+    """
+
+    def __init__(self, render_window, deg_per_s):
+        renderer = render_window.GetRenderers().GetFirstRenderer()
+        self.camera = renderer.GetActiveCamera()
+        self.deg_per_s = deg_per_s
+        self._t_last = None
+
+    def step(self):
+        t = time.perf_counter()
+        if self._t_last is not None:
+            self.camera.Azimuth(self.deg_per_s * (t - self._t_last))
+        self._t_last = t
+
+    def pause(self):
+        # Resume from where it stopped, without catching up on the pause.
+        self._t_last = None
 
 
 # -----------------------------------------------------------------------------
@@ -322,12 +354,25 @@ class PointCloudBenchmark(TrameApp):
             default=2,
             help="Shared textures VTK renders into in turn, also changeable in the panel",
         )
+        cli.add_argument(
+            "--radii",
+            type=float,
+            nargs=3,
+            default=RADII,
+            metavar=("X", "Y", "Z"),
+            help="Spread of the ellipsoidal cloud along x, y and z",
+        )
+        cli.add_argument(
+            "--second-view",
+            action="store_true",
+            help="Add a second view of the cloud and spin both cameras",
+        )
         args, _ = cli.parse_known_args()
 
         self.step_size = args.step
         self.target_fps = args.target_fps
         self.texture_count = args.textures
-        self.cloud = PointCloud(args.points, args.frames)
+        self.cloud = PointCloud(args.points, args.frames, radii=args.radii)
         self.pending_points = None
         self.running = True
         self.frame = None
@@ -340,6 +385,17 @@ class PointCloudBenchmark(TrameApp):
         self.render_window = create_vtk_pipeline(self.cloud.polydata)
         self.render_window.AddObserver("StartEvent", self._on_render_start)
         self.render_window.AddObserver("EndEvent", self._on_render_end)
+
+        # The second view shares the cloud: the first view's frames move its points.
+        self.second_render_window = None
+        self.spinners = []
+        if args.second_view:
+            self.second_render_window = create_vtk_pipeline(self.cloud.polydata)
+            self.spinners = [
+                CameraSpinner(self.render_window, SPIN_DEG_PER_S),
+                CameraSpinner(self.second_render_window, -SPIN_DEG_PER_S),
+            ]
+        self.second_view_handler = None
 
         self._build_ui()
         self._new_level()
@@ -369,12 +425,22 @@ class PointCloudBenchmark(TrameApp):
                 self._new_level()
             self.pending_points = None
 
+        if self.spinners:
+            self.spinners[0].step()
+
         frame = Frame(self.cloud.n_points)
         with self._timer_generate:
             self.cloud.animate()
         frame.stages["generate"] = self._timer_generate.dt
         self.frame = frame
         self.view_handler.update()
+
+    def before_render_second(self):
+        # The second view only spins: it picks up the cloud's latest points on its own.
+        if not self.running:
+            return
+        self.spinners[1].step()
+        self.second_view_handler.update()
 
     def _on_render_start(self, *_):
         self._render_start = time.perf_counter()
@@ -408,6 +474,8 @@ class PointCloudBenchmark(TrameApp):
         # The scheduler rebuilds its ring of textures before the next frame.
         self.texture_count = textures
         self.view_handler.texture_count = textures
+        if self.second_view_handler:
+            self.second_view_handler.texture_count = textures
         self._new_level()
 
     def toggle_running(self):
@@ -415,6 +483,11 @@ class PointCloudBenchmark(TrameApp):
         self.state.running = self.running
         if self.running:
             self.view_handler.update()
+            if self.second_view_handler:
+                self.second_view_handler.update()
+        else:
+            for spinner in self.spinners:
+                spinner.pause()
 
     def _new_level(self):
         if self.levels and self.levels[-1].count:
@@ -531,18 +604,33 @@ class PointCloudBenchmark(TrameApp):
             self.ui.root.style = "height:100vh;position:relative;"
             client.Style(CSS)
 
-            with html.Div(style="position:absolute;inset:0;"):
-                view = rca.RemoteControlledArea(
-                    display="shared-texture",
-                    event_throttle_ms=10,
-                    stats="stats = $event",
-                )
-                self.view_handler = view.create_electron_handler(
-                    self.render_window,
-                    target_fps=self.target_fps,
-                    texture_count=self.texture_count,
-                    before_render=self.before_render,
-                )
+            with html.Div(style="position:absolute;inset:0;display:flex;"):
+                with html.Div(style="flex:1;min-width:0;position:relative;"):
+                    view = rca.RemoteControlledArea(
+                        display="shared-texture",
+                        event_throttle_ms=10,
+                        stats="stats = $event",
+                    )
+                    self.view_handler = view.create_electron_handler(
+                        self.render_window,
+                        target_fps=self.target_fps,
+                        texture_count=self.texture_count,
+                        before_render=self.before_render,
+                    )
+                if self.second_render_window:
+                    with html.Div(
+                        style="flex:1;min-width:0;position:relative;border-left:1px solid #333;"
+                    ):
+                        second_view = rca.RemoteControlledArea(
+                            display="shared-texture",
+                            event_throttle_ms=10,
+                        )
+                        self.second_view_handler = second_view.create_electron_handler(
+                            self.second_render_window,
+                            target_fps=self.target_fps,
+                            texture_count=self.texture_count,
+                            before_render=self.before_render_second,
+                        )
 
             with html.Div(classes="bench", style=PANEL_STYLE):
                 with html.Div(style="margin-bottom:0.5rem;"):

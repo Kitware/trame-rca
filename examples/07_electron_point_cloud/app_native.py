@@ -29,6 +29,7 @@ import vtkmodules.vtkRenderingOpenGL2  # noqa: F401
 
 BYTES_PER_POINT = 3 * 4 + 3 * 1  # float32 xyz + uint8 rgb
 DISABLE_SHIFT_SCALE = 0  # vtkOpenGLVertexBufferObject::ShiftScaleMethod
+RADII = (2.0, 1.0, 0.5)  # standard deviation of the cloud along x, y and z
 
 
 class PointCloud:
@@ -38,10 +39,12 @@ class PointCloud:
     points the polydata at the next frame's arrays: the app work drops to ~0 while every
     frame still uploads new data. They play back and forth so the loop has no jump.
     With ``n_frames`` = 0 each update computes a new frame, in place.
+    The points spread out along x, y and z by ``radii``: an ellipsoidal cloud.
     """
 
-    def __init__(self, n_points, n_frames=8, seed=0):
+    def __init__(self, n_points, n_frames=8, seed=0, radii=RADII):
         self.rng = np.random.default_rng(seed)
+        self.radii = np.asarray(radii, dtype=np.float32)
         self.polydata = vtkPolyData()
         self.n_points = 0
         self.n_frames = n_frames
@@ -58,6 +61,7 @@ class PointCloud:
             positions[n_old:] = self.rng.standard_normal(
                 (n_points - n_old, 3), dtype=np.float32
             )
+            positions[n_old:] *= self.radii
         colors = np.empty((n_points, 3), dtype=np.uint8)
         self._noise = np.empty_like(positions)
         self.n_points = n_points
@@ -99,9 +103,10 @@ class PointCloud:
         self._show(self.frames[i if i < k else period - i])
 
     def _walk(self, positions, colors, step=0.02, pull=0.995):
-        # Random walk with a weak pull toward the origin so the cloud stays put.
+        # Random walk with a weak pull toward the origin so the cloud stays put. The steps
+        # scale with the radii too, so the walk keeps the cloud's shape.
         self.rng.standard_normal(out=self._noise, dtype=np.float32)
-        self._noise *= step
+        self._noise *= step * self.radii
         positions *= pull
         positions += self._noise
         colors.reshape(-1)[:] = np.frombuffer(self.rng.bytes(colors.size), np.uint8)
@@ -203,11 +208,19 @@ def main():
         help="Frames computed ahead on resize, 0 to compute each one live",
     )
     parser.add_argument(
+        "--radii",
+        type=float,
+        nargs=3,
+        default=RADII,
+        metavar=("X", "Y", "Z"),
+        help="Spread of the ellipsoidal cloud along x, y and z",
+    )
+    parser.add_argument(
         "--no-vsync", action="store_true", help="Don't cap the fps at the display rate"
     )
     args = parser.parse_args()
 
-    cloud = PointCloud(args.points, args.frames)
+    cloud = PointCloud(args.points, args.frames, radii=args.radii)
     render_window, interactor = create_vtk_pipeline(cloud.polydata)
     interactor.Initialize()
     if args.no_vsync:
