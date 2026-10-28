@@ -45,6 +45,8 @@ class RcaVideoRenderScheduler:
         self._rca: VtkRemoteControlledArea = window_wrapper(window)
         self._push_callback = push_callback
         self.on_codec_changed = on_codec_changed
+        # The encoder needs the render window's GL context, which the first render creates.
+        self._rca.render()
         self._rca_encoder = RcaVideoEncoder(
             self._rca.render_window, push_callback=self._push, defer=negotiate
         )
@@ -115,6 +117,7 @@ class RcaVideoRenderScheduler:
 
             self._request_event.clear()
             started = monotonic()
+            self._rca.render()
             self._rca_encoder.encode(self._rca.render_window)
             # Sleep only for what is left of the _target_period_s.
             await sleep(max(0.0, self._target_period_s - (monotonic() - started)))
@@ -124,4 +127,5 @@ class RcaVideoRenderScheduler:
             self._push_callback(content, meta)
 
     def reset(self):
+        self._rca.render()
         self._rca_encoder.reset(self._rca.render_window)

@@ -77,6 +77,15 @@ class RcaViewAdapter:
         self._scheduler.target_fps = value
 
     @property
+    def texture_count(self) -> int:
+        """How many shared textures the scheduler renders into in turn (shared-texture only)"""
+        return self._scheduler.texture_count
+
+    @texture_count.setter
+    def texture_count(self, value) -> None:
+        self._scheduler.texture_count = value
+
+    @property
     def max_pixel_count(self):
         """Use 0 to disable capping of pixel count"""
         return self._max_pixel_count

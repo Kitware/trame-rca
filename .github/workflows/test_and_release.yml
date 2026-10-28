@@ -138,6 +138,15 @@ jobs:
           cd js-components
           npm run lint
 
+      - name: Test trame-rca-electron
+        run: |
+          cd electron
+          npm ci
+          npm test
+          npm run lint
+        env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: 1
+
   test-npm-build:
     runs-on: ubuntu-latest
 

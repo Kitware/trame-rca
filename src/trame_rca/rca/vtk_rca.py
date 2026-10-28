@@ -32,7 +32,7 @@ class VtkRemoteControlledArea:
 
     @property
     def img_cols_rows(self):
-        self._render()
+        self.render()
         with self._timer_capture:
             self._window_to_image.Modified()
             self._window_to_image.Update()
@@ -50,10 +50,9 @@ class VtkRemoteControlledArea:
 
     @property
     def render_window(self):
-        self._render()
         return self._vtk_render_window
 
-    def _render(self):
+    def render(self):
         with self._timer_render:
             self._vtk_render_window.Render()
 
