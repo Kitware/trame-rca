@@ -1,3 +1,5 @@
+const { ref, onBeforeUnmount, watchEffect } = window.Vue;
+
 // Shows the frames the trame-rca-electron preload draws from the texture VTK shares with
 // Electron, for the view `name`. Only works in a page loaded by trame-rca-electron: the preload
 // defines the bridge.
@@ -9,41 +11,40 @@ export default {
     },
   },
   emits: ['stats'],
-  methods: {
-    attach() {
-      if (!window.trameRcaSharedTexture) {
-        console.warn(
-          'shared-texture-display-area: no trameRcaSharedTexture bridge, not running in trame-rca-electron?'
-        );
-        return;
+  setup(props, { emit }) {
+    const el = ref(null);
+    const attached = [];
+
+    function detachAll() {
+      while (attached.length) {
+        const [n, c] = attached.pop();
+        window.trameRcaSharedTexture.detach(n, c);
       }
-      this.attachedName = this.name;
-      // { fps, frames, info } once a second.
-      window.trameRcaSharedTexture.attach(this.name, this.$el, (stats) =>
-        this.$emit('stats', stats)
+    }
+    onBeforeUnmount(detachAll);
+
+    if (!window.trameRcaSharedTexture) {
+      console.warn(
+        'shared-texture-display-area: no trameRcaSharedTexture bridge, not running in trame-rca-electron?'
       );
-    },
-    cleanup() {
-      window.trameRcaSharedTexture?.detach(this.attachedName, this.$el);
-    },
-  },
-  watch: {
-    name() {
-      this.cleanup();
-      this.attach();
-    },
-  },
-  mounted() {
-    this.attach();
-  },
-  // support both vue2 and vue3 unmount callbacks
-  beforeDestroy() {
-    this.cleanup();
-  },
-  beforeUnmount() {
-    this.cleanup();
+    }
+
+    function emitStats(stats) {
+      emit('stats', stats);
+    }
+
+    watchEffect(() => {
+      const name = props.name;
+      const container = el.value;
+      detachAll();
+      if (!container) return;
+      attached.push([name, container]);
+      window.trameRcaSharedTexture.attach(name, container, emitStats);
+    });
+
+    return { el };
   },
   template: `
-    <canvas class="shared-texture-display-area" @contextmenu.prevent></canvas>
+    <canvas ref="el" class="shared-texture-display-area" @contextmenu.prevent></canvas>
   `,
 };
