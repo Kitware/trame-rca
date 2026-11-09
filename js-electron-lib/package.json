@@ -1,6 +1,6 @@
 {
   "name": "@kitware/trame-rca-electron",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Show trame-rca shared-texture views in Electron, without encoding frames",
   "license": "Apache-2.0",
   "author": "Kitware Inc.",
