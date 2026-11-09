@@ -26,6 +26,7 @@ __all__ = [
     "MediaSourceDisplayArea",
     "VideoDecoderDisplayArea",
     "RawImageDisplayArea",
+    "SharedTextureDisplayArea",
     "ImageStream",
     "ImageRegion",
 ]
@@ -249,6 +250,22 @@ class RawImageDisplayArea(HtmlElement):
             "name",
             "origin",
             ("image_style", "imageStyle"),
+        ]
+
+
+class SharedTextureDisplayArea(HtmlElement):
+    """The canvas trame-rca-electron draws the shared texture of view ``name`` into."""
+
+    def __init__(self, **kwargs):
+        super().__init__(
+            "shared-texture-display-area",
+            **kwargs,
+        )
+        self._attr_names += [
+            "name",
+        ]
+        self._event_names += [
+            "stats",
         ]
 
 
