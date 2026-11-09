@@ -26,7 +26,13 @@ class TextureHandle {
     this.localFds = [];
     this.surfaceRef = null;
     this.localHandle = null;
-    this.info = protocol.textureInfo(msg, this._open(msg, log));
+    try {
+      this.info = protocol.textureInfo(msg, this._open(msg, log));
+    } catch (err) {
+      // Whatever was duplicated before the failure would never be released otherwise.
+      this.release();
+      throw err;
+    }
   }
 
   _open(msg, log) {
@@ -50,7 +56,7 @@ class TextureHandle {
       return { ntHandle: handleBuffer(this.localHandle) };
     }
     // Duplicate the producer's dma-buf fds into this process.
-    this.localFds = msg.planes.map((p) => this.dma.dupFdFromProcess(msg.pid, p.fd));
+    msg.planes.forEach((p) => this.localFds.push(this.dma.dupFdFromProcess(msg.pid, p.fd)));
     log.info(
       `[trame-rca] view ${msg.view}: texture ${msg.width}x${msg.height} ${msg.fourcc} (${msg.pixelFormat}) modifier=${msg.modifier} fds ${msg.planes.map((p) => p.fd)} -> ${this.localFds}`,
     );
@@ -72,7 +78,11 @@ class TextureHandle {
 //
 // `command` is the executable to run (a python interpreter, a frozen backend, ...) and
 // `args` its arguments, e.g. ['app.py'].
-// trame-rca-electron appends the arguments the server needs: --server --port 0 --trame-electron-port <port>.
+// trame-rca-electron appends the arguments the server needs: --server --port 0 --trame-electron-port <port>,
+// and sets TRAME_ELECTRON_TOKEN in its environment: the secret trame must present to connect.
+//
+// `onExit(code, signal, error)` is called when the server exits, or fails to start (then `error`
+// is set).
 //
 // Returns { process, close }. close() kills the server and releases the textures; it is
 // called on its own when `win` closes.
@@ -87,6 +97,7 @@ const launchTrame = (
   // This platform's dma module, loaded before the server is spawned.
   let dma = null;
   let closed = false;
+  const token = protocol.newToken();
   const result = { process: null, close: null };
 
   const send = (msg) => {
@@ -152,7 +163,7 @@ const launchTrame = (
         return;
       }
       log.info(`[trame-rca] loading ${msg.url}`);
-      win.loadURL(msg.url);
+      win.loadURL(msg.url).catch((err) => log.error(`[trame-rca] failed to load ${msg.url}:`, err));
     } else if (msg.type === 'texture') {
       try {
         const { view, slot, slots } = msg;
@@ -178,29 +189,55 @@ const launchTrame = (
       conn.destroy();
       return;
     }
-    socket = conn;
     // Without this, Nagle holds frame_done back until the producer's delayed ACK.
     conn.setNoDelay(true);
-    send(
-      protocol.helloMessage(
-        protocol.passportName({
-          platform: process.platform,
-          ozonePlatform: app.commandLine.getSwitchValue('ozone-platform'),
-          ozonePlatformHint: app.commandLine.getSwitchValue('ozone-platform-hint'),
-          waylandDisplay: process.env.WAYLAND_DISPLAY,
-        }),
-      ),
-    );
-    conn.on(
-      'data',
-      protocol.createLineParser(onMessage(conn), (line, err) =>
+    // Anything on this machine can connect to the port: only the server we spawned, which
+    // got the token, may take over the window's one connection.
+    let authenticated = false;
+    const authTimer = setTimeout(() => conn.destroy(), protocol.AUTH_TIMEOUT_MS);
+    const authenticate = (msg) => {
+      if (socket || !protocol.checkAuth(msg, token)) {
+        conn.destroy();
+        return;
+      }
+      authenticated = true;
+      clearTimeout(authTimer);
+      socket = conn;
+      send(
+        protocol.helloMessage(
+          protocol.passportName({
+            platform: process.platform,
+            ozonePlatform: app.commandLine.getSwitchValue('ozone-platform'),
+            ozonePlatformHint: app.commandLine.getSwitchValue('ozone-platform-hint'),
+            waylandDisplay: process.env.WAYLAND_DISPLAY,
+          }),
+        ),
+      );
+    };
+    const handleMessage = onMessage(conn);
+    const parse = protocol.createLineParser(
+      (msg) => (authenticated ? handleMessage(msg) : authenticate(msg)),
+      (line, err) => {
+        // Don't echo what an unknown peer sent.
+        if (!authenticated) return conn.destroy();
         log.error(
           `[trame-rca] bad line from trame (${line.length} chars): ${JSON.stringify(line)}`,
           err,
-        ),
-      ),
+        );
+      },
     );
-    conn.on('close', () => log.info('[trame-rca] trame disconnected'));
+    conn.on('data', (chunk) => {
+      if (!authenticated && conn.bytesRead > protocol.MAX_AUTH_BYTES) {
+        conn.destroy();
+        return;
+      }
+      parse(chunk);
+    });
+    conn.on('error', (err) => log.warn(`[trame-rca] connection error: ${err.message}`));
+    conn.on('close', () => {
+      clearTimeout(authTimer);
+      if (authenticated) log.info('[trame-rca] trame disconnected');
+    });
   };
 
   const statsListener = (event, stats) => {
@@ -209,6 +246,10 @@ const launchTrame = (
   ipcMain.on('trame-rca:stats', statsListener);
 
   const server = net.createServer(handleConnection);
+  server.on('error', (err) => {
+    log.error('[trame-rca] texture channel failed:', err);
+    result.close();
+  });
 
   result.close = () => {
     if (closed) return;
@@ -236,12 +277,20 @@ const launchTrame = (
     log.info(`[trame-rca] spawning ${command} ${fullArgs.join(' ')}`);
     result.process = spawn(command, fullArgs, {
       cwd,
-      env: env ?? process.env,
+      env: { ...(env ?? process.env), [protocol.TOKEN_ENV]: token },
       stdio: ['ignore', 'inherit', 'inherit'],
+    });
+    // A command that can't be spawned emits 'error' (and no 'exit'): unhandled, it would
+    // take the main process down.
+    result.process.on('error', (err) => {
+      log.error(`[trame-rca] failed to start ${command}:`, err);
+      onExit?.(null, null, err);
+      result.close();
     });
     result.process.on('exit', (code, signal) => {
       log.info(`[trame-rca] trame exited code=${code} signal=${signal}`);
       onExit?.(code, signal);
+      result.close();
     });
   });
 

@@ -23,9 +23,13 @@ and loads the page in `win` once trame serves it. Options:
 
 - `command`, `args`, `cwd`, `env`: the trame server to run. Any executable works: a python
   interpreter and a script, a frozen backend, etc.
-- `onExit(code, signal)`: the server exited.
+- `onExit(code, signal, error)`: the server exited, or could not be started (then `error` is set).
 - `onStats({ view, fps, frames, info })`: once a second, per shared-texture view that drew frames.
 - `log`: defaults to `console`.
+
+The server also gets a random `TRAME_ELECTRON_TOKEN` in its environment. The texture channel
+listens on a local TCP port that any process on the machine can reach, so it only serves the
+process that presents that token (`trame_rca.electron` does it for you).
 
 It returns `{ process, close }`. `close()` kills the server; it is called when `win` closes.
 

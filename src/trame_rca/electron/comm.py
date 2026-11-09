@@ -4,7 +4,9 @@ Talks newline-delimited JSON to the Electron main process (EMP) on 127.0.0.1:<po
 -> means python to EMP
 <- means EMP to Python
 
-    <- {"type":"hello", "protocol": N, "passport": name}    at start, the texture passport to use
+    -> {"type":"auth", "token": t}                          first, the TRAME_ELECTRON_TOKEN the EMP
+                                                            put in the environment of the server
+    <- {"type":"hello", "protocol": N, "passport": name}    then, the texture passport to use
     -> {"type":"server_ready", "protocol": N, "url": url}   once, when trame serves its page
     -> {"type":"texture", "view": v, "slot": i, "slots": k, ...}
                                                             at start, after every resize and
@@ -31,12 +33,17 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
 import socket
 from typing import Callable
 
 logger = logging.getLogger(__name__)
 
 PROTOCOL_VERSION = 1
+
+# The environment variable trame-rca-electron passes the secret of its texture channel in.
+# Must match TOKEN_ENV in the npm package.
+TOKEN_ENV = "TRAME_ELECTRON_TOKEN"
 
 
 class ProtocolMismatchError(RuntimeError):
@@ -103,8 +110,9 @@ class EmpClient:
             client = cls._clients[port] = cls(port)
         return client
 
-    def __init__(self, port: int):
+    def __init__(self, port: int, token: str | None = None):
         self.port = port
+        self._token = token
         self._conn: LineConnection | None = None
         self._connect_task: asyncio.Task | None = None
         self._read_task: asyncio.Task | None = None
@@ -138,8 +146,17 @@ class EmpClient:
 
     async def _connect(self):
         try:
+            token = self._token or os.environ.get(TOKEN_ENV)
+            if not token:
+                raise RuntimeError(
+                    f"{TOKEN_ENV} is missing: shared-texture views only work when "
+                    "the trame server is started by trame-rca-electron"
+                )
             self._conn = await LineConnection.open(self.port)
             logger.info("connected to the Electron main process on port %d", self.port)
+            # Anything on the machine can reach the port: prove we are the server the
+            # EMP spawned before it says anything.
+            await self._conn.send({"type": "auth", "token": token})
             try:
                 msg = await self._conn.recv()
             except EOFError:
