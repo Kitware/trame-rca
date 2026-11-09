@@ -9,3 +9,9 @@ updates:
       actions:
         patterns:
           - "*"
+
+  # Maintain dependencies for @kitware/trame-rca-electron
+  - package-ecosystem: "npm"
+    directory: "/js-electron-lib"
+    schedule:
+      interval: "weekly"

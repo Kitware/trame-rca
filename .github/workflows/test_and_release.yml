@@ -138,6 +138,28 @@ jobs:
           cd js-components
           npm run lint
 
+  js-electron-lib:
+    name: Test js-electron-lib
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set Up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - name: Test and lint
+        run: |
+          cd js-electron-lib
+          npm ci
+          npm test
+          npm run lint
+        env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: 1
+
   test-npm-build:
     runs-on: ubuntu-latest
 
@@ -168,7 +190,7 @@ jobs:
           npm run build
 
   release:
-    needs: [pre-commit, pytest, vitest, test-npm-build]
+    needs: [pre-commit, pytest, vitest, js-electron-lib, test-npm-build]
     runs-on: ubuntu-latest
     if: github.event_name == 'push'
     environment:
@@ -215,3 +237,40 @@ jobs:
       - name: Publish package distributions to PyPI
         if: steps.release.outputs.released == 'true'
         uses: pypa/gh-action-pypi-publish@release/v1
+
+  # Publishes @kitware/trame-rca-electron when its package.json version is not on npm yet.
+  # Uses npm trusted publishing (OIDC): no token needed once the package is configured on npmjs.com.
+  publish-js-electron-lib:
+    needs: [pre-commit, pytest, vitest, js-electron-lib, test-npm-build]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    environment:
+      name: npm
+      url: https://www.npmjs.com/package/@kitware/trame-rca-electron
+    permissions:
+      id-token: write # IMPORTANT: mandatory for npm trusted publishing and provenance
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set Up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+
+      - name: Publish if version is new
+        working-directory: js-electron-lib
+        run: |
+          name=$(node -p "require('./package.json').name")
+          version=$(node -p "require('./package.json').version")
+          if npm view "$name@$version" version >/dev/null 2>&1; then
+            echo "$name@$version is already published, skipping"
+          else
+            npm ci
+            npm publish
+          fi
+        env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: 1
