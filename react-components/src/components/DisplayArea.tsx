@@ -2,6 +2,7 @@ import { type AnyProps } from "../context";
 import ImageDisplayArea from "./ImageDisplayArea";
 import MediaSourceDisplayArea from "./MediaSourceDisplayArea";
 import RawImageDisplayArea from "./RawImageDisplayArea";
+import SharedTextureDisplayArea from "./SharedTextureDisplayArea";
 import VideoDecoderDisplayArea from "./VideoDecoderDisplayArea";
 
 export default function DisplayArea(props: AnyProps) {
@@ -40,6 +41,9 @@ export default function DisplayArea(props: AnyProps) {
           imageStyle={imageStyle}
           trame={trame}
         />
+      ) : null}
+      {display === "shared-texture" ? (
+        <SharedTextureDisplayArea name={name} onStats={onStats} />
       ) : null}
     </div>
   );
