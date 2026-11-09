@@ -261,6 +261,10 @@ jobs:
           node-version: 24
           registry-url: https://registry.npmjs.org
 
+      # Trusted publishing needs npm >= 11.5.1, which Node's bundled npm may be older than.
+      - name: Update npm
+        run: npm install -g npm@latest
+
       - name: Publish if version is new
         working-directory: js-electron-lib
         run: |
