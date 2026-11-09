@@ -3,7 +3,7 @@
 The Electron side lives in the trame-rca-electron npm package: it spawns the trame
 server with ``--trame-electron-port`` and shows the shared texture in the page.
 
-Call ``trame_rca.widgets.init_vtk_for_shared_textures()`` before creating any VTK render
+Call ``trame.widgets.rca.init_vtk_for_shared_textures()`` before creating any VTK render
 window, then use
 ``RemoteControlledArea(display="shared-texture").create_electron_handler(...)``.
 """

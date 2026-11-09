@@ -8,10 +8,15 @@ try:
     from .video_scheduler import RcaVideoRenderScheduler
 except (ModuleNotFoundError, ImportError) as e:
     logger.info(e.msg)
+try:
+    from .shared_texture_scheduler import RcaSharedTextureRenderScheduler
+except (ModuleNotFoundError, ImportError) as e:
+    logger.info(e.msg)
 
 
 __all__ = [
     "RcaImageRenderScheduler",
     "RcaRenderSchedulerProtocol",
+    "RcaSharedTextureRenderScheduler",
     "RcaVideoRenderScheduler",
 ]
