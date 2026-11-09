@@ -16,8 +16,7 @@
     "./preload": "./src/preload.mjs"
   },
   "publishConfig": {
-    "access": "public",
-    "provenance": true
+    "access": "public"
   },
   "files": [
     "src/**/*.js",
