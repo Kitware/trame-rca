@@ -76,3 +76,14 @@ test('nativePixmap swaps in the local fds', () => {
     },
   });
 });
+
+test('checkAuth only accepts the auth message carrying the token', () => {
+  const token = protocol.newToken();
+  assert.notEqual(token, protocol.newToken());
+  assert.ok(protocol.checkAuth({ type: 'auth', token }, token));
+  assert.ok(!protocol.checkAuth({ type: 'auth', token: 'nope' }, token));
+  assert.ok(!protocol.checkAuth({ type: 'auth', token: token + 'x' }, token));
+  assert.ok(!protocol.checkAuth({ type: 'auth', token: 1 }, token));
+  assert.ok(!protocol.checkAuth({ type: 'hello', token }, token));
+  assert.ok(!protocol.checkAuth(null, token));
+});
