@@ -9,6 +9,7 @@ import ImageStream from "./components/ImageStream";
 import MediaSourceDisplayArea from "./components/MediaSourceDisplayArea";
 import RawImageDisplayArea from "./components/RawImageDisplayArea";
 import RemoteControlledArea from "./components/RemoteControlledArea";
+import SharedTextureDisplayArea from "./components/SharedTextureDisplayArea";
 import StatisticsDisplay from "./components/StatisticsDisplay";
 import VideoDecoderDisplayArea from "./components/VideoDecoderDisplayArea";
 
@@ -21,6 +22,7 @@ const COMPONENTS: Record<string, ComponentType<any>> = {
   "media-source-display-area": MediaSourceDisplayArea,
   "raw-image-display-area": RawImageDisplayArea,
   "remote-controlled-area": RemoteControlledArea,
+  "shared-texture-display-area": SharedTextureDisplayArea,
   "statistics-display": StatisticsDisplay,
   "video-decoder-display-area": VideoDecoderDisplayArea,
 };
