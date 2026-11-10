@@ -50,7 +50,7 @@ Install the component
 
 .. code-block:: console
 
-    pip install -e .
+    uv sync --all-extras --dev
 
 
 Optional dependencies
@@ -144,6 +144,10 @@ Windows (D3D11 NT handles) and Linux under Wayland (dma-buf).
   with ``pidfd_getfd``, which needs ``kernel.yama.ptrace_scope`` at 1 or less:
   ``sudo sysctl -w kernel.yama.ptrace_scope=1``. Set ``RENDER_NODE=/dev/dri/renderD129``
   if VTK picks another GPU than the compositor.
+- Linux: if Electron fails to start with ``The SUID sandbox helper binary was found, but is
+  not configured correctly``, allow unprivileged user namespaces. On Ubuntu 24.04 and later:
+  ``sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0``. On older distributions:
+  ``sudo sysctl -w kernel.unprivileged_userns_clone=1``.
 
 .. code-block:: python
 
@@ -168,8 +172,9 @@ You can try our code example:
 
 .. code-block:: console
 
-    pip install trame trame-vuetify
-    pip install "trame-rca[electron]"
+    uv venv
+    uv pip install trame trame-vuetify trame-rca vtk
+    source .venv/bin/activate
 
     cd examples/06_electron_starter/electron
     npm i

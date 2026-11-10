@@ -63,6 +63,18 @@ jobs:
           echo "21297da4a4eb34ebefc54afca5d8dd86c0fdd6a9dfe49b1b962c5d1eeeafd8ec  libjpeg-turbo.deb" | sha256sum -c
           sudo apt install -y ./libjpeg-turbo.deb
 
+      # GitHub's Windows runners have no GPU, so VTK needs software rendering.
+      # Mesa dropped OSMesa in 25.1, so pin the last mesa-dist-win release that ships osmesa.dll.
+      - name: Install OSMesa for Windows
+        if: matrix.config.os == 'windows-latest'
+        run: |
+          cd "$RUNNER_TEMP"
+          curl -fsSL -o mesa.7z https://github.com/pal1000/mesa-dist-win/releases/download/25.0.7/mesa3d-25.0.7-release-msvc.7z
+          echo "e81be9e5990fabc5e528f544b1a2e2f37f70fe098822eb9c70555501f3621287  mesa.7z" | sha256sum -c
+          7z x -y -omesa mesa.7z x64/osmesa.dll
+          cygpath -w "$PWD/mesa/x64" >> "$GITHUB_PATH"
+          echo "VTK_DEFAULT_OPENGL_WINDOW=vtkOSOpenGLRenderWindow" >> "$GITHUB_ENV"
+
       - name: Install libjpeg-turbo for macOS
         if: matrix.config.os == 'macos-latest'
         run: brew install jpeg-turbo

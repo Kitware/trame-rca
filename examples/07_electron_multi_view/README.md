@@ -16,3 +16,13 @@ npm start
 ```
 
 `npm start` runs `app.py` with the `python3` of the active environment, or `$PYTHON`.
+
+On Linux, if Electron fails to start with `The SUID sandbox helper binary was found, but is not
+configured correctly`, allow unprivileged user namespaces:
+
+```sh
+# Ubuntu 24.04 and later
+sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+# Older distributions
+sudo sysctl -w kernel.unprivileged_userns_clone=1
+```
