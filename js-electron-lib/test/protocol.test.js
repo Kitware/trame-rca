@@ -26,6 +26,11 @@ test('hello carries the protocol version', () => {
   });
 });
 
+test('hello carries the refresh rate of the display when it is known', () => {
+  assert.equal(protocol.helloMessage('iosurface', 120).refresh_rate, 120);
+  assert.ok(!('refresh_rate' in protocol.helloMessage('iosurface', 0)));
+});
+
 test('checkProtocol rejects other versions', () => {
   protocol.checkProtocol({ protocol: protocol.PROTOCOL_VERSION });
   assert.throws(() => protocol.checkProtocol({ protocol: protocol.PROTOCOL_VERSION + 1 }), /protocol/);

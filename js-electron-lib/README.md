@@ -38,7 +38,7 @@ It returns `{ process, close }`. `close()` kills the server; it is called when `
 own preload, `import '@kitware/trame-rca-electron/preload'` from it: it must then be an ES module
 preload too, with the `.mjs` extension.
 
-On the python side, see `examples/06_electron` in trame-rca.
+On the python side, see `examples/06_electron_starter` in trame-rca.
 
 ## Packaging an app
 

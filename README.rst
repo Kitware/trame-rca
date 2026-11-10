@@ -171,7 +171,7 @@ You can try our code example:
     pip install trame trame-vuetify
     pip install "trame-rca[electron]"
 
-    cd examples/06_electron/electron
+    cd examples/06_electron_starter/electron
     npm i
     npm start
 

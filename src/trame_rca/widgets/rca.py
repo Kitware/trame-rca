@@ -98,6 +98,9 @@ class RemoteControlledArea(HtmlElement):
 
     def __init__(self, name: str | None = None, display: str = "image", **kwargs):
         self._drop_frame_limit = 9999  # no limit / aka no frame drop
+        if display == "shared-texture":
+            # Throttling only adds undesired latency. Callers can still override it.
+            kwargs.setdefault("event_throttle_ms", 0)
         super().__init__(
             "remote-controlled-area",
             name=name or f"trame_rca_{RemoteControlledArea._next_id}",
@@ -193,7 +196,7 @@ class RemoteControlledArea(HtmlElement):
     def create_electron_handler(
         self,
         window: RemoteControlledAreaProtocol | vtkRenderWindow,
-        target_fps: float = 60.0,
+        target_fps: float | None = None,
         before_render: Callable[[], None] | None = None,
         on_disconnect: Callable[[], None] | None = None,
         texture_count: int = 2,
@@ -203,6 +206,7 @@ class RemoteControlledArea(HtmlElement):
         started this server (see @Kitware/trame-rca-electron), for ``display="shared-texture"``.
 
         Call ``init_vtk_for_shared_textures()`` before creating ``render_window``.
+        ``target_fps`` defaults to the refresh rate of the display showing the Electron window.
         ``before_render`` is called before every frame and may schedule another render,
         e.g. to animate. ``on_disconnect`` is called when Electron goes away and
         defaults to stopping the server. ``texture_count`` is how many shared textures

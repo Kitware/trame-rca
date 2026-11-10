@@ -38,6 +38,8 @@ from trame_rca.rca import (
 logger = logging.getLogger(__name__)
 
 FRAME_DONE_TIMEOUT_S = 1.0
+# When target_fps is None and Electron doesn't report the refresh rate of its display.
+FALLBACK_TARGET_FPS = 60.0
 
 
 def _check_texture_count(value):
@@ -60,13 +62,16 @@ class RcaSharedTextureRenderScheduler:
         window: RemoteControlledAreaProtocol | vtkRenderWindow,
         emp_port: int,
         *,
-        target_fps: float = 60.0,
+        target_fps: float | None = None,
         on_disconnect: Callable[[], None] | None = None,
         before_render: Callable[[], None] | None = None,
         texture_count: int = 2,
         view: str = "default",
     ):
-        """``view`` is the name of the RemoteControlledArea that shows the frames."""
+        """``view`` is the name of the RemoteControlledArea that shows the frames.
+
+        ``target_fps`` defaults to the refresh rate of the display showing the Electron window.
+        """
         self._timer_render = profiler.Timer("rca.shared_texture.render")
         self._timer_flush = profiler.Timer("rca.shared_texture.flush")
         self._rca = window_wrapper(window)
@@ -124,10 +129,15 @@ class RcaSharedTextureRenderScheduler:
 
     @property
     def target_fps(self):
-        return self._target_fps
+        """The frame rate cap. Unless set, the refresh rate of Electron's display once connected."""
+        if self._target_fps:
+            return self._target_fps
+        refresh_rate = self._client.refresh_rate if self._client else None
+        return refresh_rate or FALLBACK_TARGET_FPS
 
     @target_fps.setter
     def target_fps(self, value):
+        """None follows the refresh rate of Electron's display."""
         self._target_fps = value
 
     @property
@@ -193,7 +203,6 @@ class RcaSharedTextureRenderScheduler:
             raise
         await self._client.server_ready(url)
         next_frame = 0
-        period = 1.0 / self._target_fps
 
         while not self._is_closing:
             await self._request_event.wait()
@@ -240,6 +249,7 @@ class RcaSharedTextureRenderScheduler:
                 }
             )
             # Pace against fixed frame clock held in `next_frame`
+            period = 1.0 / self.target_fps
             next_frame = max(next_frame + period, time.monotonic())
             await asyncio.sleep(max(0.0, next_frame - time.monotonic()))
 

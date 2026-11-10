@@ -36,7 +36,14 @@ const passportName = ({ platform, ozonePlatform, ozonePlatformHint, waylandDispl
   return wayland ? 'wayland-dmabuf' : 'x11-dmabuf';
 };
 
-const helloMessage = (passport) => ({ type: 'hello', protocol: PROTOCOL_VERSION, passport });
+// `refreshRate` is the refresh rate in Hz of the display showing the window: trame-rca's
+// default frame rate. Left out when Electron doesn't know it.
+const helloMessage = (passport, refreshRate) => ({
+  type: 'hello',
+  protocol: PROTOCOL_VERSION,
+  passport,
+  ...(refreshRate > 0 ? { refresh_rate: refreshRate } : {}),
+});
 
 const checkProtocol = (msg) => {
   if (msg.protocol !== PROTOCOL_VERSION) {

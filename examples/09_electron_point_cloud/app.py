@@ -607,7 +607,6 @@ class PointCloudBenchmark(TrameApp):
                 with html.Div(style="flex:1;min-width:0;position:relative;"):
                     view = rca.RemoteControlledArea(
                         display="shared-texture",
-                        event_throttle_ms=10,
                         stats="stats = $event",
                     )
                     self.view_handler = view.create_electron_handler(
@@ -622,7 +621,6 @@ class PointCloudBenchmark(TrameApp):
                     ):
                         second_view = rca.RemoteControlledArea(
                             display="shared-texture",
-                            event_throttle_ms=10,
                         )
                         self.second_view_handler = second_view.create_electron_handler(
                             self.second_render_window,

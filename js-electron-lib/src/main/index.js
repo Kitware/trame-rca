@@ -1,4 +1,4 @@
-import { app, ipcMain, sharedTexture } from 'electron/main';
+import { app, ipcMain, screen, sharedTexture } from 'electron/main';
 import { spawn } from 'node:child_process';
 import net from 'node:net';
 import { fileURLToPath } from 'node:url';
@@ -211,6 +211,8 @@ const launchTrame = (
             ozonePlatformHint: app.commandLine.getSwitchValue('ozone-platform-hint'),
             waylandDisplay: process.env.WAYLAND_DISPLAY,
           }),
+          // The display the window is (mostly) on.
+          screen.getDisplayMatching(win.getBounds()).displayFrequency,
         ),
       );
     };

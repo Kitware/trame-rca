@@ -9,7 +9,7 @@ no copy to the CPU. The Electron app in `./electron` starts `app.py` and loads i
 # From the repository root, in a virtual environment
 pip install -e ".[electron]" trame trame-vuetify
 
-cd examples/06_electron/electron
+cd examples/08_electron_volume_render/electron
 npm i
 npm start
 ```

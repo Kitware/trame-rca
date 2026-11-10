@@ -241,7 +241,6 @@ class ElectronApp(TrameApp):
                 ):
                     view = rca.RemoteControlledArea(
                         display="shared-texture",
-                        event_throttle_ms=10,
                         stats="stats = $event",
                     )
                     self.view_handler = view.create_electron_handler(

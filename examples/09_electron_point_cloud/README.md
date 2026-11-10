@@ -14,7 +14,7 @@ baseline: `python app_native.py [--points N] [--frames K] [--radii X Y Z] [--no-
 # From the repository root, in a virtual environment
 pip install -e ".[electron]" trame
 
-cd examples/07_electron_point_cloud/electron
+cd examples/09_electron_point_cloud/electron
 npm i
 npm start
 # Or pass arguments to app.py
