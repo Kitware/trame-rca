@@ -147,7 +147,7 @@ class RemoteControlledArea(HtmlElement):
 
     def create_electron_handler(
         self,
-        window: RemoteControlledAreaProtocol | vtkRenderWindow,
+        window: vtkRenderWindow,
         target_fps: float | None = None,
         before_render: Callable[[], None] | None = None,
         on_disconnect: Callable[[], None] | None = None,
@@ -157,7 +157,7 @@ class RemoteControlledArea(HtmlElement):
         Render ``render_window`` into a texture shared with the Electron app that
         started this server (see @Kitware/trame-rca-electron), for ``display="shared-texture"``.
 
-        Call ``init_vtk_for_shared_textures()`` before creating ``render_window``.
+        Import ``trame_rca.electron.vtk`` before creating ``render_window``.
         ``target_fps`` defaults to the refresh rate of the display showing the Electron window.
         ``before_render`` is called before every frame and may schedule another render,
         e.g. to animate. ``on_disconnect`` is called when Electron goes away and
@@ -183,9 +183,8 @@ class RemoteControlledArea(HtmlElement):
             def on_disconnect():
                 asynchronous.create_task(self.server.stop())
 
-        rca_protocol = window_wrapper(window)
         scheduler = RcaSharedTextureRenderScheduler(
-            rca_protocol,
+            window,
             emp_port(self.server),
             target_fps=target_fps,
             on_disconnect=on_disconnect,

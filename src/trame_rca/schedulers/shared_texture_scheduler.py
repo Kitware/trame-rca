@@ -29,11 +29,7 @@ from trame_common.utils import profiler
 
 from trame_rca.electron.comm import EmpClient
 from trame_rca.electron.passports import texture_passport_class, TexturePassport
-from trame_rca.rca import (
-    RemoteControlledAreaProtocol,
-    VtkRemoteControlledArea,
-    window_wrapper,
-)
+from trame_rca.rca import VtkRemoteControlledArea
 
 logger = logging.getLogger(__name__)
 
@@ -59,7 +55,7 @@ class RcaSharedTextureRenderScheduler:
 
     def __init__(
         self,
-        window: RemoteControlledAreaProtocol | vtkRenderWindow,
+        window: vtkRenderWindow,
         emp_port: int,
         *,
         target_fps: float | None = None,
@@ -74,10 +70,7 @@ class RcaSharedTextureRenderScheduler:
         """
         self._timer_render = profiler.Timer("rca.shared_texture.render")
         self._timer_flush = profiler.Timer("rca.shared_texture.flush")
-        self._rca = window_wrapper(window)
-        assert isinstance(self._rca, VtkRemoteControlledArea), (
-            "SharedTexture scheduler only works with VTK render windows!"
-        )
+        self._rca = VtkRemoteControlledArea(window)
         self._emp_port = emp_port
         self._view = view
         self._target_fps = target_fps
@@ -89,7 +82,7 @@ class RcaSharedTextureRenderScheduler:
         self._client: EmpClient | None = None
         self._texture_count = _check_texture_count(texture_count)
         # Ring buffer of shared textures (one TexturePassport per slot), rendered into in turn.
-        self._texture_ring = []
+        self._texture_ring: list[TexturePassport] = []
         # the frame_done of the last frame per shared texture.
         self._slot_frames = []
         self._next_slot = 0
@@ -202,9 +195,6 @@ class RcaSharedTextureRenderScheduler:
         self._texture_ring = []
 
     async def _run(self, url):
-        assert isinstance(self._rca, VtkRemoteControlledArea), (
-            "SharedTexture scheduler only works with VTK render windows!"
-        )
         assert isinstance(self._client, EmpClient), "start() did not run!"
         try:
             passport_name = await self._client.connect()
@@ -280,9 +270,6 @@ class RcaSharedTextureRenderScheduler:
 
     async def _update_textures(self, passport_name):
         """(Re)allocate the shared textures when the render window's size or their count changed."""
-        assert isinstance(self._rca, VtkRemoteControlledArea), (
-            "SharedTexture scheduler only works with VTK render windows!"
-        )
         assert isinstance(self._client, EmpClient), "start() did not run!"
         width, height = self._rca.render_window.GetSize()
         count = self._texture_count
@@ -307,7 +294,6 @@ class RcaSharedTextureRenderScheduler:
         self._slot_frames = [None] * count
         self._next_slot = 0
         for slot, passport in enumerate(self._texture_ring):
-            assert isinstance(passport, TexturePassport)
             await self._client.send(
                 {
                     **passport.to_json(),
