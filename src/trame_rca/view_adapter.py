@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import math
-import warnings
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -70,28 +69,17 @@ class RcaViewAdapter:
         return base_factor
 
     @property
+    def scheduler(self) -> RcaRenderSchedulerProtocol:
+        """The render scheduler driving this view (the reference itself is read-only)"""
+        return self._scheduler
+
+    @property
     def target_fps(self) -> float:
         return self._scheduler.target_fps
 
     @target_fps.setter
     def target_fps(self, value) -> None:
         self._scheduler.target_fps = value
-
-    @property
-    def texture_count(self) -> int:
-        """How many shared textures the scheduler renders into in turn (shared-texture only)"""
-        return getattr(self._scheduler, "texture_count", -1)
-
-    @texture_count.setter
-    def texture_count(self, value) -> None:
-        if hasattr(self._scheduler, "texture_count"):
-            self._scheduler.texture_count = value
-        else:
-            warnings.warn(
-                f"texture_count is only supported by shared-texture schedulers; "
-                f"ignoring on {type(self._scheduler).__name__}",
-                stacklevel=2,
-            )
 
     @property
     def max_pixel_count(self):

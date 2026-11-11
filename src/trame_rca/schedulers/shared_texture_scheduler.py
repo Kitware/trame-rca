@@ -88,8 +88,8 @@ class RcaSharedTextureRenderScheduler:
 
         self._client: EmpClient | None = None
         self._texture_count = _check_texture_count(texture_count)
-        # The ring of shared textures
-        self._passports = []
+        # Ring buffer of shared textures (one TexturePassport per slot), rendered into in turn.
+        self._texture_ring = []
         # the frame_done of the last frame per shared texture.
         self._slot_frames = []
         self._next_slot = 0
@@ -142,7 +142,17 @@ class RcaSharedTextureRenderScheduler:
 
     @property
     def texture_count(self):
-        """How many shared textures VTK renders into in turn. 1 waits for Electron after every frame."""
+        """Size of the ring of shared textures VTK renders into in turn. Defaults to 2.
+
+        While Electron presents frame N, VTK can already draw the next frame into another
+        texture of the ring, which hides the cost of each render. On a mid-tier to
+        high-end GPU, 1 texture is normally enough because VTK renders faster than
+        Electron presents. On low-end hardware, a larger ring lets VTK render frames
+        N+k while Electron is still presenting frame N. 1 waits for Electron after
+        every frame.
+
+        Changing it at runtime rebuilds the ring before the next frame.
+        """
         return self._texture_count
 
     @texture_count.setter
@@ -187,9 +197,9 @@ class RcaSharedTextureRenderScheduler:
                 task.cancel()
         if self._client:
             self._client.remove_view(self._view)
-        for passport in self._passports:
+        for passport in self._texture_ring:
             passport.release()
-        self._passports = []
+        self._texture_ring = []
 
     async def _run(self, url):
         assert isinstance(self._rca, VtkRemoteControlledArea), (
@@ -216,14 +226,14 @@ class RcaSharedTextureRenderScheduler:
             await self._wait_for_slot(self._next_slot)
             await self._update_textures(passport_name)
             slot = self._next_slot
-            passport = self._passports[slot]
+            passport = self._texture_ring[slot]
             if (passport.width, passport.height) != tuple(
                 self._rca.render_window.GetSize()
             ):
                 # Resized while waiting: rendering now would reallocate the shared texture.
                 self.schedule_render()
                 continue
-            self._next_slot = (slot + 1) % len(self._passports)
+            self._next_slot = (slot + 1) % len(self._texture_ring)
 
             passport.attach()
             if self._before_render:
@@ -276,17 +286,17 @@ class RcaSharedTextureRenderScheduler:
         assert isinstance(self._client, EmpClient), "start() did not run!"
         width, height = self._rca.render_window.GetSize()
         count = self._texture_count
-        if len(self._passports) == count and all(
-            (p.width, p.height) == (width, height) for p in self._passports
+        if len(self._texture_ring) == count and all(
+            (p.width, p.height) == (width, height) for p in self._texture_ring
         ):
             return
-        if not self._passports:
+        if not self._texture_ring:
             # The first render will create the context and the framebuffers.
             self._rca.render_window.Render()
             self._rca.render_window.MakeCurrent()
         passport_class = texture_passport_class(passport_name)
-        old, self._passports = (
-            self._passports,
+        old, self._texture_ring = (
+            self._texture_ring,
             [
                 passport_class(self._rca.render_window, width, height)
                 for _ in range(count)
@@ -296,7 +306,7 @@ class RcaSharedTextureRenderScheduler:
             passport.release()
         self._slot_frames = [None] * count
         self._next_slot = 0
-        for slot, passport in enumerate(self._passports):
+        for slot, passport in enumerate(self._texture_ring):
             assert isinstance(passport, TexturePassport)
             await self._client.send(
                 {

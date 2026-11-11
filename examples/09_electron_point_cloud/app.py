@@ -472,9 +472,6 @@ class PointCloudBenchmark(TrameApp):
             return
         # The scheduler rebuilds its ring of textures before the next frame.
         self.texture_count = textures
-        self.view_handler.texture_count = textures
-        if self.second_view_handler:
-            self.second_view_handler.texture_count = textures
         self._new_level()
 
     def toggle_running(self):
