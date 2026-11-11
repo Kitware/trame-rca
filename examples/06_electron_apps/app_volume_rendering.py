@@ -7,13 +7,13 @@ import json
 import platform
 from importlib.metadata import version
 
+# Before creating any VTK render window: VTK must render on the GPU Electron uses.
+import trame_rca.electron.vtk  # noqa: F401
+
 from trame.app import TrameApp
 from trame.decorators import change
 from trame.ui.vuetify3 import SinglePageWithDrawerLayout
 from trame.widgets import html, rca, vuetify3 as v3
-
-# Before creating any VTK render window: VTK must render on the GPU Electron uses.
-rca.init_vtk_for_shared_textures()
 
 from vtkmodules.vtkCommonDataModel import vtkPiecewiseFunction  # noqa: E402
 from vtkmodules.vtkFiltersSources import vtkPartitionedDataSetCollectionSource  # noqa: E402

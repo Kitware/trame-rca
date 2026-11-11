@@ -28,7 +28,7 @@ from trame.widgets import client, html, rca
 from trame_common.utils import profiler
 
 # Before creating any VTK render window: VTK must render on the GPU Electron uses.
-rca.init_vtk_for_shared_textures()
+import trame_rca.electron.vtk  # noqa: F401
 
 from vtkmodules.util.numpy_support import numpy_to_vtk, numpy_to_vtkIdTypeArray  # noqa: E402
 from vtkmodules.vtkCommonCore import vtkPoints  # noqa: E402

@@ -3,12 +3,12 @@
 Started by the Electron app in ./electron, see the README.
 """
 
+# Before creating any VTK render window: VTK must render on the GPU Electron uses.
+import trame_rca.electron.vtk  # noqa: F401
+
 from trame.app import TrameApp
 from trame.ui.html import DivLayout
 from trame.widgets import client, rca
-
-# Before creating any VTK render window: VTK must render on the GPU Electron uses.
-rca.init_vtk_for_shared_textures()
 
 from vtkmodules.vtkFiltersSources import vtkPartitionedDataSetCollectionSource  # noqa: E402
 from vtkmodules.vtkInteractionStyle import vtkInteractorStyleTrackballCamera  # noqa: E402

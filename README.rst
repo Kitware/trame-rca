@@ -151,9 +151,12 @@ Windows (D3D11 NT handles) and Linux under Wayland (dma-buf).
 
 .. code-block:: python
 
-    from trame.widgets import rca
+    # before creating any VTK render window,
+    # this setup environment to properly initialize
+    # VTK factories to work with Electron native textures.
+    import trame_rca.electron.vtk
 
-    rca.init_vtk_for_shared_textures()  # before creating any VTK render window
+    from trame.widgets import rca
 
     # ... create render_window, then in the UI:
     view = rca.RemoteControlledArea(display="shared-texture")
@@ -167,7 +170,7 @@ You can try our code example:
     uv pip install trame trame-vuetify trame-rca vtk
     source .venv/bin/activate
 
-    cd examples/06_electron_starter/electron
+    cd examples/06_electron_apps/electron
     npm i
     npm start
 
