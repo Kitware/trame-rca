@@ -69,6 +69,11 @@ class RcaViewAdapter:
         return base_factor
 
     @property
+    def scheduler(self) -> RcaRenderSchedulerProtocol:
+        """The render scheduler driving this view (the reference itself is read-only)"""
+        return self._scheduler
+
+    @property
     def target_fps(self) -> float:
         return self._scheduler.target_fps
 

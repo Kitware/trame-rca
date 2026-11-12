@@ -6,7 +6,10 @@ Talks newline-delimited JSON to the Electron main process (EMP) on 127.0.0.1:<po
 
     -> {"type":"auth", "token": t}                          first, the TRAME_ELECTRON_TOKEN the EMP
                                                             put in the environment of the server
-    <- {"type":"hello", "protocol": N, "passport": name}    then, the texture passport to use
+    <- {"type":"hello", "protocol": N, "passport": name, "refresh_rate": hz}
+                                                            then, the texture passport to use and,
+                                                            when Electron knows it, the refresh
+                                                            rate of the display showing the window
     -> {"type":"server_ready", "protocol": N, "url": url}   once, when trame serves its page
     -> {"type":"texture", "view": v, "slot": i, "slots": k, ...}
                                                             at start, after every resize and
@@ -120,6 +123,9 @@ class EmpClient:
         self._views: dict[str, tuple[Callable[[dict], None], Callable[[], None]]] = {}
         self._server_ready_sent = False
         self._closed = False
+        # The refresh rate in Hz of the display showing the window, from the EMP's hello.
+        # None until connected, or when Electron doesn't know it.
+        self.refresh_rate: float | None = None
 
     def add_view(
         self,
@@ -164,6 +170,9 @@ class EmpClient:
             if msg.get("type") != "hello":
                 raise ConnectionError(f"expected a hello message, got {msg!r}")
             check_protocol(msg)
+            refresh_rate = msg.get("refresh_rate")
+            if isinstance(refresh_rate, (int, float)) and refresh_rate > 0:
+                self.refresh_rate = float(refresh_rate)
         except Exception:
             self.close()
             raise

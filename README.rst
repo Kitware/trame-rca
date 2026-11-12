@@ -50,7 +50,7 @@ Install the component
 
 .. code-block:: console
 
-    pip install -e .
+    uv sync --all-extras --dev
 
 
 Optional dependencies
@@ -128,3 +128,50 @@ up outside the trame-rca directory, checkout the `wheel` branch, and install it 
     cd ../trame-rca
 
     python ./examples/05_video/vtk_cone_simple_video.py
+
+Shared textures with Electron
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+In an Electron app, VTK can render into a GPU texture that Electron shows as is: without encoding
+and without copying to the CPU. The Electron side is the ``@kitware/trame-rca-electron`` npm package in
+``./js-electron-lib``: it starts the trame server and loads its page. Supported on macOS (IOSurface),
+Windows (D3D11 NT handles) and Linux under Wayland (dma-buf).
+
+- macOS: works out of the box (IOSurface).
+- Windows: the GL driver needs ``WGL_NV_DX_interop2``, and VTK must render on the GPU
+  Chromium uses. Set ``D3D_ADAPTER=<index>`` if that isn't DXGI adapter 0.
+- Linux: Wayland only for now (dma-buf). Electron duplicates the server's file descriptors
+  with ``pidfd_getfd``, which needs ``kernel.yama.ptrace_scope`` at 1 or less:
+  ``sudo sysctl -w kernel.yama.ptrace_scope=1``. Set ``RENDER_NODE=/dev/dri/renderD129``
+  if VTK picks another GPU than the compositor.
+- Linux: if Electron fails to start with ``The SUID sandbox helper binary was found, but is
+  not configured correctly``, allow unprivileged user namespaces. On Ubuntu 24.04 and later:
+  ``sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0``. On older distributions:
+  ``sudo sysctl -w kernel.unprivileged_userns_clone=1``.
+
+.. code-block:: python
+
+    # before creating any VTK render window,
+    # this setup environment to properly initialize
+    # VTK factories to work with Electron native textures.
+    import trame_rca.electron.vtk
+
+    from trame.widgets import rca
+
+    # ... create render_window, then in the UI:
+    view = rca.RemoteControlledArea(display="shared-texture")
+    view_handler = view.create_electron_handler(render_window)
+
+You can try our code example:
+
+.. code-block:: console
+
+    uv venv
+    uv pip install trame trame-vuetify trame-rca vtk
+    source .venv/bin/activate
+
+    cd examples/06_electron_apps/electron
+    npm i
+    npm start
+
+See ``js-electron-lib/README.md`` for the Electron API and what packaging an app needs.

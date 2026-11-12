@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+
 import warnings
 from typing import TYPE_CHECKING, Callable
 from weakref import WeakKeyDictionary, WeakValueDictionary
@@ -16,7 +18,10 @@ from trame_rca.rca import RemoteControlledAreaProtocol, window_wrapper
 from trame_rca.schedulers import RcaImageRenderScheduler
 from trame_rca.utils import RcaViewAdapter
 
+
 from .. import module
+
+logger = logging.getLogger(__name__)
 
 __all__ = [
     "RemoteControlledArea",
@@ -45,6 +50,9 @@ class RemoteControlledArea(HtmlElement):
 
     def __init__(self, name: str | None = None, display: str = "image", **kwargs):
         self._drop_frame_limit = 9999  # no limit / aka no frame drop
+        if display == "shared-texture":
+            # Throttling only adds undesired latency. Callers can still override it.
+            kwargs.setdefault("event_throttle_ms", 0)
         super().__init__(
             "remote-controlled-area",
             name=name or f"trame_rca_{RemoteControlledArea._next_id}",
@@ -134,6 +142,66 @@ class RemoteControlledArea(HtmlElement):
             )
 
         view_handler = RcaViewAdapter(window, self.name, scheduler=scheduler)
+        self.add_view_handler(view_handler)
+        return view_handler
+
+    def create_electron_handler(
+        self,
+        window: vtkRenderWindow,
+        target_fps: float | None = None,
+        before_render: Callable[[], None] | None = None,
+        on_disconnect: Callable[[], None] | None = None,
+        texture_count: int = 2,
+    ):
+        """
+        Render ``render_window`` into a texture shared with the Electron app that
+        started this server (see @Kitware/trame-rca-electron), for ``display="shared-texture"``.
+
+        Import ``trame_rca.electron.vtk`` before creating ``render_window``.
+        ``target_fps`` defaults to the refresh rate of the display showing the Electron window.
+        ``before_render`` is called before every frame and may schedule another render,
+        e.g. to animate. ``on_disconnect`` is called when Electron goes away and
+        defaults to stopping the server. ``texture_count`` is how many shared textures
+        VTK renders into in turn, so it can render the next frame while Electron shows the
+        previous ones.
+
+        Each shared-texture view of a page needs its own ``name``.
+        """
+        from trame.app import asynchronous
+
+        from trame_rca.electron import emp_port, server_url
+        from trame_rca.schedulers import RcaSharedTextureRenderScheduler
+
+        if self.display != "shared-texture":
+            raise ValueError(
+                "create_electron_handler needs a RemoteControlledArea with "
+                f'display="shared-texture", not "{self.display}"'
+            )
+
+        if on_disconnect is None:
+
+            def on_disconnect():
+                asynchronous.create_task(self.server.stop())
+
+        scheduler = RcaSharedTextureRenderScheduler(
+            window,
+            emp_port(self.server),
+            target_fps=target_fps,
+            on_disconnect=on_disconnect,
+            before_render=before_render,
+            texture_count=texture_count,
+            view=self.name,
+        )
+
+        def start(**_):
+            scheduler.start(url=server_url(self.server))
+
+        if self.server.running:
+            start()
+        else:
+            self.ctrl.on_server_ready.add(start)
+
+        view_handler = RcaViewAdapter(scheduler.rca, self.name, scheduler=scheduler)
         self.add_view_handler(view_handler)
         return view_handler
 
