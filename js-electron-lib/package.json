@@ -33,6 +33,8 @@
     "koffi": "^3.3.3"
   },
   "devDependencies": {
-    "eslint": "^8.57.1"
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.14.0",
+    "globals": "^17.14.0"
   }
 }
